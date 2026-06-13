@@ -8,9 +8,9 @@ from datetime import date
 import pytest
 
 from app.db.models import Claim, Document, Patient
-from app.services.memory.reducer import grouping_key
 from app.schemas.claims import Claim as ClaimSchema
 from app.seed.fixtures import demo_claims
+from app.services.memory.reducer import grouping_key
 
 pytestmark = pytest.mark.asyncio
 

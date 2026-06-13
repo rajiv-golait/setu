@@ -21,7 +21,7 @@ from app import jobs_store
 from app.config import settings
 from app.db.models import Document
 from app.db.session import SessionLocal
-from app.errors import EXTRACTION_FAILED, REASONING_FAILED, INTERNAL
+from app.errors import EXTRACTION_FAILED, INTERNAL, REASONING_FAILED
 from app.schemas.claims import ClaimsJSON
 from app.schemas.jobs import STAGES, JobStatusDTO
 from app.services import persistence

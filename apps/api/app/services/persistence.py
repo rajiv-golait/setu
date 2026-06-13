@@ -18,7 +18,6 @@ from app.db.models import Summary as SummaryRow
 from app.ids import new_id, new_token
 from app.schemas.brief import DoctorBriefDTO
 from app.schemas.claims import Claim, ClaimsJSON
-from app.schemas.memory import CurrentTruthDTO
 from app.schemas.summary import PatientSummaryDTO
 from app.services.memory.normalize import normalize_key
 from app.services.memory.reducer import grouping_key

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.models import Document
-from app.errors import AppError, VALIDATION_ERROR
+from app.errors import VALIDATION_ERROR, AppError
 from app.ids import new_id
 
 _ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "application/pdf"}

@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Patient
 from app.db.session import get_db
-from app.errors import AppError, NOT_FOUND, not_found
+from app.errors import NOT_FOUND, AppError, not_found
 from app.schemas.share import ShareCreateRequest, ShareDTO, ShareSnapshotDTO
 from app.services import persistence
 from app.services.memory.persistence import load_current_truth

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Patient
 from app.db.session import get_db
-from app.errors import AppError, NOT_FOUND, VALIDATION_ERROR
+from app.errors import NOT_FOUND, VALIDATION_ERROR, AppError
 
 
 async def get_patient_token(x_patient_token: str | None = Header(default=None)) -> str:

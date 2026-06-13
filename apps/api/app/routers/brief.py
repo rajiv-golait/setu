@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
-from app.errors import AppError, NOT_FOUND, not_found
+from app.errors import NOT_FOUND, AppError, not_found
 from app.schemas.brief import DoctorBriefDTO
 from app.services import persistence
 from app.services.brief import build_brief
