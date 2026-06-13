@@ -1,0 +1,39 @@
+# Optional model services — run only on a GPU box.
+#   docker compose -f docker-compose.yml -f docker-compose.models.yml up
+#
+# Then point the API at them:
+#   EXTRACTION_PROVIDER=qwen   QWEN_ENDPOINT=http://qwen:8000/v1
+#   REASONING_PROVIDER=medgemma  MEDGEMMA_ENDPOINT=http://medgemma:8000/v1
+#
+# Defaults stay `mock`, so the core stack runs with ZERO GPU.
+services:
+  qwen:
+    image: vllm/vllm-openai:latest
+    command: >
+      --model Qwen/Qwen3-VL-8B-Instruct
+      --port 8000
+      --max-model-len 8192
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  medgemma:
+    image: vllm/vllm-openai:latest
+    command: >
+      --model google/medgemma-4b-it
+      --port 8000
+    ports:
+      - "8002:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
