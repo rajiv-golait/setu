@@ -29,10 +29,19 @@ class Settings(BaseSettings):
     # --- AI providers ---
     EXTRACTION_PROVIDER: str = "mock"  # mock|qwen|cloud
     QWEN_ENDPOINT: str = "http://models:8001/v1"
-    CLOUD_VLM_PROVIDER: str = ""  # claude|openai|mistral
-    CLOUD_VLM_API_KEY: str = ""
-    REASONING_PROVIDER: str = "mock"  # mock|medgemma
+    REASONING_PROVIDER: str = "mock"  # mock|medgemma|gemini|cloud
     MEDGEMMA_ENDPOINT: str = "http://models:8002/v1"
+
+    # --- Cloud (Gemini 3.5 Flash does BOTH extraction + reasoning) ---
+    CLOUD_API_PROVIDER: str = "gemini"  # gemini|openai (gemini is default)
+    GOOGLE_API_KEY: str = ""  # https://aistudio.google.com/apikey
+    OPENAI_API_KEY: str = ""  # fallback only
+
+    # --- Telegram bot ---
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_SECRET: str = ""  # optional webhook verification
+    BRIEF_BASE_URL: str = "http://localhost:3000"  # public brief page base
+    PUBLIC_URL: str = ""  # ngrok / production URL for webhook registration
 
     # --- Demo ---
     DEMO_MODE: bool = False

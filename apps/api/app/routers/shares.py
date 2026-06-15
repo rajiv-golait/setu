@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,27 @@ from app.services.memory.persistence import load_current_truth
 from app.services.sharing import build_snapshot, make_qr_svg, share_url
 
 router = APIRouter(tags=["shares"])
+
+
+async def _fetch_share_snapshot(db: AsyncSession, token: str) -> ShareSnapshotDTO:
+    row = await persistence.get_share(db, token)
+    if row is None:
+        raise not_found("Share", token)
+    if row.expires_at is not None:
+        expires = row.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires < datetime.now(timezone.utc):
+            raise AppError(NOT_FOUND, "Share has expired", details={"token": token}, retryable=False)
+
+    row.view_count = (row.view_count or 0) + 1
+    await db.commit()
+    return ShareSnapshotDTO.model_validate(row.snapshot_json)
+
+
+def _with_audience(snapshot: ShareSnapshotDTO, view: str | None) -> ShareSnapshotDTO:
+    audience = "specialist" if view == "specialist" else "patient"
+    return snapshot.model_copy(update={"audience": audience})
 
 
 @router.post("/shares", response_model=ShareDTO, status_code=201)
@@ -60,17 +81,15 @@ async def create_share(body: ShareCreateRequest, db: AsyncSession = Depends(get_
 @router.get("/shares/{token}", response_model=ShareSnapshotDTO)
 async def get_share(token: str, db: AsyncSession = Depends(get_db)) -> ShareSnapshotDTO:
     """PUBLIC — no token header required."""
-    row = await persistence.get_share(db, token)
-    if row is None:
-        raise not_found("Share", token)
-    if row.expires_at is not None:
-        # Some DB drivers (sqlite) return naive datetimes; treat as UTC.
-        expires = row.expires_at
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        if expires < datetime.now(timezone.utc):
-            raise AppError(NOT_FOUND, "Share has expired", details={"token": token}, retryable=False)
+    return await _fetch_share_snapshot(db, token)
 
-    row.view_count = (row.view_count or 0) + 1
-    await db.commit()
-    return ShareSnapshotDTO.model_validate(row.snapshot_json)
+
+@router.get("/brief/{token}", response_model=ShareSnapshotDTO)
+async def get_brief_snapshot(
+    token: str,
+    view: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> ShareSnapshotDTO:
+    """PUBLIC — same frozen snapshot as /shares/{token}; ?view=specialist echoes audience."""
+    snapshot = await _fetch_share_snapshot(db, token)
+    return _with_audience(snapshot, view)

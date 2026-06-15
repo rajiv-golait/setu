@@ -35,3 +35,14 @@ class ReasonerProvider(ABC):
         next_steps, disclaimer.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    async def generate_explanation(
+        self, current_truth: CurrentTruthDTO, lang: str, doc_type: str
+    ) -> str:
+        """Return a 3-5 sentence plain-language explanation in `lang` (a STRING,
+        not JSON). Safety enforcement (disclaimer, banned phrases, abstain) is
+        applied by services/explanation.py around this call — providers must not
+        invent facts beyond the supplied Current Truth.
+        """
+        raise NotImplementedError

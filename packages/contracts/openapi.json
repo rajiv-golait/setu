@@ -20,6 +20,46 @@
         "title": "Body_upload_document_api_v1_documents_post",
         "type": "object"
       },
+      "Body_webchat_message_api_v1_webchat_message_post": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "contentMediaType": "application/octet-stream",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "title": "Body_webchat_message_api_v1_webchat_message_post",
+        "type": "object"
+      },
       "BriefAllergy": {
         "properties": {
           "severity": {
@@ -111,6 +151,31 @@
           "type"
         ],
         "title": "BriefFlag",
+        "type": "object"
+      },
+      "BriefPriority": {
+        "properties": {
+          "level": {
+            "enum": [
+              "routine",
+              "review_soon"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "BriefPriority",
         "type": "object"
       },
       "BriefLab": {
@@ -525,9 +590,52 @@
             "title": "One Line",
             "type": "string"
           },
+          "referral_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Reason"
+          },
+          "referred_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referred By"
+          },
+          "specialist_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialist Type"
+          },
           "patient_id": {
             "title": "Patient Id",
             "type": "string"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BriefPriority"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "recent_labs": {
             "default": [],
@@ -750,8 +858,8 @@
               "extraction",
               "validation",
               "memory",
+              "explanation",
               "brief",
-              "summary",
               "share"
             ],
             "items": {
@@ -1076,6 +1184,15 @@
       "ShareSnapshotDTO": {
         "description": "Public, frozen, read-only snapshot fetched by the doctor.",
         "properties": {
+          "audience": {
+            "default": "patient",
+            "enum": [
+              "patient",
+              "specialist"
+            ],
+            "title": "Audience",
+            "type": "string"
+          },
           "brief": {
             "$ref": "#/components/schemas/DoctorBriefDTO"
           },
@@ -1683,6 +1800,65 @@
         ]
       }
     },
+    "/api/v1/brief/{token}": {
+      "get": {
+        "description": "PUBLIC — same frozen snapshot as /shares/{token}; ?view=specialist echoes audience.",
+        "operationId": "get_brief_snapshot_api_v1_brief__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "View"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareSnapshotDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Brief Snapshot",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
     "/api/v1/shares/{token}": {
       "get": {
         "description": "PUBLIC — no token header required.",
@@ -1726,6 +1902,134 @@
         ]
       }
     },
+    "/api/v1/webchat/explanation/{document_id}": {
+      "get": {
+        "operationId": "webchat_explanation_api_v1_webchat_explanation__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Webchat Explanation Api V1 Webchat Explanation  Document Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Webchat Explanation",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
+    "/api/v1/webchat/job/{job_id}": {
+      "get": {
+        "operationId": "webchat_job_api_v1_webchat_job__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Webchat Job",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
+    "/api/v1/webchat/message": {
+      "post": {
+        "operationId": "webchat_message_api_v1_webchat_message_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_webchat_message_api_v1_webchat_message_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Webchat Message Api V1 Webchat Message Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Webchat Message",
+        "tags": [
+          "webchat"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health_health_get",
@@ -1746,6 +2050,57 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/telegram/webhook": {
+      "post": {
+        "operationId": "telegram_webhook_telegram_webhook_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-telegram-bot-api-secret-token",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Telegram-Bot-Api-Secret-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Telegram Webhook Telegram Webhook Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Telegram Webhook",
+        "tags": [
+          "telegram"
         ]
       }
     }

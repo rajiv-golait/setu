@@ -51,6 +51,11 @@ class BriefFlag(BaseModel):
     type: FlagType
 
 
+class BriefPriority(BaseModel):
+    level: Literal["routine", "review_soon"]
+    reasons: list[str] = []
+
+
 class DoctorBriefDTO(BaseModel):
     brief_id: str
     patient_id: str
@@ -67,3 +72,7 @@ class DoctorBriefDTO(BaseModel):
     suggested_questions: list[str] = []
     source_documents: list[str] = []
     confidence_notes: str | None = None
+    referred_by: str | None = None
+    referral_reason: str | None = None
+    specialist_type: str | None = None
+    priority: BriefPriority | None = None

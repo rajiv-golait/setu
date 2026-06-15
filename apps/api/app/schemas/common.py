@@ -39,6 +39,16 @@ class DocumentDTO(BaseModel):
     extraction: ClaimsJSON | None = None
 
 
+class DocumentListItem(BaseModel):
+    id: str
+    patient_id: str
+    doc_type: str | None = None
+    mime: str | None = None
+    source: str = "upload"
+    status: str = "pending"
+    uploaded_at: datetime
+
+
 class ReferralCreateRequest(BaseModel):
     patient_id: str
     specialty: str

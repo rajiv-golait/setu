@@ -93,6 +93,13 @@ class MedGemmaReasoner(ReasonerProvider):
             logger.warning("medgemma summary failed (%s); using template fallback", exc)
             return await self._fallback.generate_summary(current_truth, brief, lang)
 
+    async def generate_explanation(
+        self, current_truth: CurrentTruthDTO, lang: str, doc_type: str
+    ) -> str:
+        # MedGemma has no dedicated explanation path; delegate to the deterministic
+        # mock so it stays consistent with the actual patient data.
+        return await self._fallback.generate_explanation(current_truth, lang, doc_type)
+
 
 # satisfy type-checkers that DoctorBriefDTO import is intentional (shape reference)
 _ = DoctorBriefDTO

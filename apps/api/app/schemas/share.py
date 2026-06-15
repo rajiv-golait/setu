@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -36,3 +37,4 @@ class ShareSnapshotDTO(BaseModel):
     patient_ref: str
     brief: DoctorBriefDTO
     current_truth: CurrentTruthDTO
+    audience: Literal["patient", "specialist"] = "patient"

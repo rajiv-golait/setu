@@ -1,8 +1,8 @@
 """Pipeline integration smoke test (mock providers).
 
-document -> claims -> truth -> brief -> summary -> share, asserting schema-valid
-output at each stage. Runs the orchestrator directly for determinism (BackgroundTasks
-fire after the response in the test client).
+document -> claims -> truth -> explanation -> brief -> share, asserting
+schema-valid output at each stage. Runs the orchestrator directly for
+determinism (BackgroundTasks fire after the response in the test client).
 """
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from app.ids import new_id
 from app.schemas.brief import DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO
 from app.schemas.share import ShareSnapshotDTO
-from app.schemas.summary import PatientSummaryDTO
 from app.services import persistence
+from app.services.explanation import DISCLAIMER
 from app.services.memory.persistence import load_current_truth
 from app.services.orchestrator import run_pipeline
 
@@ -52,8 +52,17 @@ async def test_full_pipeline_produces_valid_artifacts(session_factory, tmp_path)
     # Job completed through every stage.
     state = await jobs_store.load(job_id)
     assert state.status == "completed", state.error
-    assert set(state.completed_stages) >= {"extraction", "validation", "memory", "brief"}
+    assert set(state.completed_stages) >= {
+        "extraction", "validation", "memory", "explanation", "brief",
+    }
     assert "brief_id" in state.result
+
+    # Explanation was generated, cached, and carries the safety disclaimer.
+    assert state.result.get("explanation")
+    assert DISCLAIMER["mr"] in state.result["explanation"]
+    cached = await jobs_store.load_explanation("doc_s1")
+    assert cached is not None
+    assert cached["explanation"] == state.result["explanation"]
 
     async with session_factory() as db:
         # Current truth is schema-valid and non-empty.
@@ -68,12 +77,6 @@ async def test_full_pipeline_produces_valid_artifacts(session_factory, tmp_path)
         assert any(f.type == "needs_review" for f in brief.flags)
         # seeded HbA1c trends up + high -> at least one abnormal_lab flag
         assert any(f.type == "abnormal_lab" for f in brief.flags)
-
-        # Marathi summary is schema-valid.
-        summary: PatientSummaryDTO = await persistence.latest_summary(db, "pat_s1", "mr")
-        assert summary is not None
-        assert summary.language == "mr"
-        assert summary.disclaimer
 
         # Share snapshot embeds a valid brief + truth.
         token = state.result.get("share_token")

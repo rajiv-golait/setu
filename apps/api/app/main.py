@@ -18,6 +18,8 @@ from app.routers import (
     referrals,
     shares,
     summary,
+    telegram,
+    webchat,
 )
 
 logging.basicConfig(level=settings.LOG_LEVEL.upper())
@@ -47,8 +49,12 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-for r in (patients, documents, jobs, memory, brief, summary, shares, referrals):
+for r in (patients, documents, jobs, memory, brief, summary, shares, referrals, webchat):
     app.include_router(r.router, prefix=API_PREFIX)
+
+# Telegram webhook is mounted WITHOUT the /api/v1 prefix: register the webhook
+# URL as {PUBLIC_URL}/telegram/webhook.
+app.include_router(telegram.router, prefix="/telegram")
 
 
 @app.get("/health", tags=["health"])

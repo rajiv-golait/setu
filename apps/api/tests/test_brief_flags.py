@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
-from app.services.brief import compute_flags
+from app.services.brief import compute_flags, normalize_brief_content
 
 THRESHOLD = 0.7
 
@@ -61,3 +61,26 @@ def test_clean_entry_no_flags():
     )
     flags = compute_flags(truth([e]), THRESHOLD)
     assert flags == []
+
+
+def test_normalize_brief_content_coerces_string_medications():
+    raw = {
+        "one_line": "Dermatology follow-up",
+        "chief_concern": "Acne management",
+        "active_medications": [
+            "Biodript Facewash",
+            {"name": "Metformin", "dose": "500mg", "frequency": "BD"},
+        ],
+        "recent_labs": ["HbA1c 8.1%"],
+        "active_conditions": "Type 2 diabetes",
+        "allergies": "Sulfa drugs",
+        "timeline": "2026-06-15: Lab draw",
+        "suggested_questions": ["Adherence to topical regimen?"],
+    }
+    normalized = normalize_brief_content(raw)
+    assert normalized["active_medications"][0] == {"name": "Biodript Facewash"}
+    assert normalized["active_medications"][1]["name"] == "Metformin"
+    assert normalized["recent_labs"][0] == {"test": "HbA1c 8.1%"}
+    assert normalized["active_conditions"][0] == {"condition": "Type 2 diabetes"}
+    assert normalized["allergies"][0] == {"substance": "Sulfa drugs"}
+    assert normalized["timeline"][0] == {"date": "", "event": "2026-06-15: Lab draw"}

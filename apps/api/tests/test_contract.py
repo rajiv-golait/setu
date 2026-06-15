@@ -35,6 +35,7 @@ def test_endpoint_surface_present():
         "/api/v1/patients/{patient_id}/summary",
         "/api/v1/shares",
         "/api/v1/shares/{token}",
+        "/api/v1/brief/{token}",
         "/api/v1/referrals",
     }
     missing = expected - set(paths)

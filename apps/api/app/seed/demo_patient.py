@@ -29,13 +29,20 @@ from app.db.models import (
 )
 from app.db.session import SessionLocal
 from app.ids import new_id
-from app.schemas.brief import DoctorBriefDTO
+from app.schemas.brief import BriefPriority, DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO
 from app.seed.fixtures import (
+    DEMO_CHAT_ID,
+    DEMO_DISPLAY_NAME,
     DEMO_DOCUMENTS,
     DEMO_PATIENT_ID,
     DEMO_PATIENT_TOKEN,
     DEMO_SHARE_TOKEN,
+    SEEDED_ONE_LINE,
+    SEEDED_PRIORITY,
+    SEEDED_REFERRED_BY,
+    SEEDED_REFERRAL_REASON,
+    SEEDED_SPECIALIST_TYPE,
     demo_claims,
 )
 from app.services.brief import build_brief
@@ -60,11 +67,13 @@ async def seed() -> None:
         db.add(
             Patient(
                 id=DEMO_PATIENT_ID,
-                display_name="62F",
+                display_name=DEMO_DISPLAY_NAME,
                 lang_pref="mr",
+                telegram_chat_id=DEMO_CHAT_ID,
                 patient_token=DEMO_PATIENT_TOKEN,
             )
         )
+        await db.flush()
 
         # Documents.
         for d in DEMO_DOCUMENTS:
@@ -79,6 +88,8 @@ async def seed() -> None:
                     status="extracted",
                 )
             )
+
+        await db.flush()
 
         # Claims (append-only; normalized_key via the reducer's grouping logic).
         from app.schemas.claims import Claim as ClaimSchema
@@ -115,6 +126,12 @@ async def seed() -> None:
         reasoner = MockReasoner()
         source_docs = [d["id"] for d in DEMO_DOCUMENTS]
         brief: DoctorBriefDTO = await build_brief(DEMO_PATIENT_ID, truth, reasoner, source_docs)
+        # Force the exact demo headline + bridge fields (stable, independent of reducer prose).
+        brief.one_line = SEEDED_ONE_LINE
+        brief.referred_by = SEEDED_REFERRED_BY
+        brief.referral_reason = SEEDED_REFERRAL_REASON
+        brief.specialist_type = SEEDED_SPECIALIST_TYPE
+        brief.priority = BriefPriority.model_validate(SEEDED_PRIORITY)
         db.add(
             Brief(
                 id=brief.brief_id,
@@ -146,7 +163,7 @@ async def seed() -> None:
             token=DEMO_SHARE_TOKEN,
             created_at=now,
             expires_at=expires,
-            patient_ref="Patient (62F)",
+            patient_ref="Patient (58M)",
             brief=brief,
             current_truth=truth,
         )

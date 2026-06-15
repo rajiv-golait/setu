@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.errors import NOT_FOUND, AppError, not_found
@@ -33,9 +32,6 @@ async def _ensure_patient(db: AsyncSession, patient_id: str) -> Patient:
 
 @router.get("/{patient_id}/brief", response_model=DoctorBriefDTO)
 async def get_brief(patient_id: str, db: AsyncSession = Depends(get_db)) -> DoctorBriefDTO:
-    # DEMO_MODE: serve the seeded patient's cached brief instantly, no pipeline.
-    if settings.DEMO_MODE:
-        patient_id = settings.SEED_PATIENT_ID
     await _ensure_patient(db, patient_id)
     brief = await persistence.latest_brief(db, patient_id)
     if brief is None:

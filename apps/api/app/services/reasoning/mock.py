@@ -134,6 +134,56 @@ class MockReasoner(ReasonerProvider):
             "suggested_questions": questions,
         }
 
+    async def generate_explanation(
+        self, current_truth: CurrentTruthDTO, lang: str, doc_type: str
+    ) -> str:
+        """Deterministic plain-language explanation built from Current Truth.
+
+        No model, no network. The disclaimer is appended by
+        services/explanation.py, but we include one here too so the raw provider
+        output is already safe.
+        """
+        entries = current_truth.entries
+        labs, meds = _labs(entries), _meds(entries)
+        if lang == "mr":
+            return self._explain_mr(labs, meds)
+        return self._explain_en(labs, meds)
+
+    def _explain_mr(self, labs, meds) -> str:  # noqa: ANN001
+        parts: list[str] = []
+        for lab in labs:
+            v = lab.value
+            name = v.get("test_name", _title(lab.normalized_key))
+            if v.get("trend") == "up" and v.get("previous") is not None:
+                parts.append(f"तुमची {name} पातळी ({v.get('value')}) वाढली आहे — मागच्या वेळेपेक्षा ({v.get('previous')}).")
+            elif v.get("trend") == "down" and v.get("previous") is not None:
+                parts.append(f"तुमची {name} पातळी ({v.get('value')}) कमी झाली आहे.")
+        if not parts:
+            parts.append("तुमच्या रिपोर्टमध्ये कोणतीही मोठी समस्या आढळली नाही.")
+        med_names = [
+            (m.value if not m.value.get("conflict") else m.value["values"][0]).get("name", _title(m.normalized_key))
+            for m in meds
+            if m.state != "possibly_discontinued"
+        ]
+        if med_names:
+            parts.append(f"{' आणि '.join(med_names[:2])} सुरू आहेत.")
+        parts.append("कृपया डॉक्टरांशी बोला.")
+        parts.append("हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही.")
+        return " ".join(parts)
+
+    def _explain_en(self, labs, meds) -> str:  # noqa: ANN001
+        parts: list[str] = []
+        for lab in labs:
+            v = lab.value
+            name = v.get("test_name", _title(lab.normalized_key))
+            if v.get("trend") in ("up", "down") and v.get("previous") is not None:
+                parts.append(f"Your {name} is {_TREND_WORD[v['trend']]} ({v.get('previous')} → {v.get('value')}).")
+        if not parts:
+            parts.append("No major issues were found in your report.")
+        parts.append("Please speak with your doctor.")
+        parts.append("This is an explanation of your document, not medical advice.")
+        return " ".join(parts)
+
     async def generate_summary(self, current_truth: CurrentTruthDTO, brief: dict, lang: str) -> dict:
         """Deterministic Marathi (mr) content. For non-mr, fall back to English."""
         if lang == "mr":

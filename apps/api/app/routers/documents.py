@@ -11,7 +11,7 @@ from app.db.session import get_db
 from app.errors import not_found
 from app.ids import new_id
 from app.schemas.claims import ClaimsJSON
-from app.schemas.common import DocumentDTO, DocumentUploadResponse
+from app.schemas.common import DocumentDTO, DocumentListItem, DocumentUploadResponse
 from app.services import ingestion
 from app.services.orchestrator import run_pipeline
 
@@ -43,6 +43,37 @@ async def upload_document(
     background.add_task(run_pipeline, job_id, doc.id, patient_id)
 
     return DocumentUploadResponse(document_id=doc.id, job_id=job_id, status="queued")
+
+
+@router.get("/patients/{patient_id}/documents", response_model=list[DocumentListItem])
+async def list_patient_documents(
+    patient_id: str, db: AsyncSession = Depends(get_db)
+) -> list[DocumentListItem]:
+    patient = (
+        await db.execute(select(Patient).where(Patient.id == patient_id))
+    ).scalar_one_or_none()
+    if patient is None:
+        raise not_found("Patient", patient_id)
+
+    rows = (
+        await db.execute(
+            select(Document)
+            .where(Document.patient_id == patient_id)
+            .order_by(Document.uploaded_at.desc())
+        )
+    ).scalars().all()
+    return [
+        DocumentListItem(
+            id=doc.id,
+            patient_id=doc.patient_id,
+            doc_type=doc.doc_type,
+            mime=doc.mime,
+            source=doc.source,
+            status=doc.status,
+            uploaded_at=doc.uploaded_at,
+        )
+        for doc in rows
+    ]
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDTO)

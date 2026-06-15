@@ -15,9 +15,19 @@ from datetime import datetime, timezone
 
 from app.config import settings
 from app.ids import new_id
-from app.schemas.brief import BriefFlag, DoctorBriefDTO
+from app.schemas.brief import BriefFlag, BriefPriority, DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
+from app.services.priority import compute_priority
 from app.services.reasoning.base import ReasonerProvider
+
+# Default specialist when the model does not infer one (plain dict — not AI).
+_SPECIALIST_BY_DOMINANT = {
+    "diabetes": "Endocrinologist",
+    "hypertension": "Cardiologist",
+    "cardiac": "Cardiologist",
+    "renal": "Nephrologist",
+}
+_DEFAULT_SPECIALIST = "General Physician"
 
 # Required fields whose absence yields a missing_data flag, per entry type.
 _REQUIRED_FOR_BRIEF = {
@@ -103,6 +113,100 @@ def _confidence_notes(truth: CurrentTruthDTO, flags: list[BriefFlag]) -> str:
     return f"{flagged} of {total} memory entries flagged for review."
 
 
+def _has_renal_flag(truth: CurrentTruthDTO) -> bool:
+    for e in truth.entries:
+        if e.entry_type != "lab_result":
+            continue
+        key = e.normalized_key.lower()
+        flag = e.value.get("flag")
+        if key in ("egfr", "creatinine", "gfr") and flag in ("low", "high"):
+            return True
+    return False
+
+
+def _dominant_condition_key(truth: CurrentTruthDTO) -> str | None:
+    for e in truth.entries:
+        if e.entry_type != "diagnosis":
+            continue
+        fields = _entry_fields(e)
+        cond = (fields.get("condition") or e.normalized_key).lower()
+        if any(w in cond for w in ("diabetes", "diabetic", "t2dm", "t1dm", "glyc")):
+            return "diabetes"
+        if any(w in cond for w in ("hypertension", "htn", "cardiac", "heart", "cad")):
+            return "hypertension"
+    return None
+
+
+def default_specialist_type(truth: CurrentTruthDTO) -> str:
+    """Deterministic specialty suggestion from dominant condition / renal lab flags."""
+    if _has_renal_flag(truth):
+        return _SPECIALIST_BY_DOMINANT["renal"]
+    dominant = _dominant_condition_key(truth)
+    if dominant:
+        return _SPECIALIST_BY_DOMINANT[dominant]
+    return _DEFAULT_SPECIALIST
+
+
+def _coerce_named_item(item: object, name_key: str, aliases: tuple[str, ...] = ()) -> dict:
+    """Normalize a list item that may be a plain string from LLM output."""
+    if isinstance(item, str):
+        return {name_key: item}
+    if isinstance(item, dict):
+        if name_key not in item:
+            for alt in aliases:
+                if alt in item:
+                    return {**item, name_key: item[alt]}
+        return item
+    return {name_key: str(item)}
+
+
+def _coerce_timeline_item(item: object) -> dict:
+    if isinstance(item, str):
+        return {"date": "", "event": item}
+    if isinstance(item, dict):
+        event = item.get("event") or item.get("description") or ""
+        return {"date": item.get("date", ""), "event": event}
+    return {"date": "", "event": str(item)}
+
+
+def _as_list(value: object) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    return [value]
+
+
+def normalize_brief_content(content: dict) -> dict:
+    """Coerce provider brief JSON into shapes DoctorBriefDTO expects.
+
+    Cloud models often return medications/conditions as plain strings instead of
+    structured objects — normalize before Pydantic validation.
+    """
+    out = dict(content)
+    out["active_medications"] = [
+        _coerce_named_item(m, "name", ("medication", "drug"))
+        for m in _as_list(content.get("active_medications"))
+    ]
+    out["recent_labs"] = [
+        _coerce_named_item(l, "test", ("test_name",))
+        for l in _as_list(content.get("recent_labs"))
+    ]
+    out["active_conditions"] = [
+        _coerce_named_item(c, "condition", ("diagnosis", "name"))
+        for c in _as_list(content.get("active_conditions"))
+    ]
+    out["allergies"] = [
+        _coerce_named_item(a, "substance", ("allergen", "name"))
+        for a in _as_list(content.get("allergies"))
+    ]
+    out["timeline"] = [_coerce_timeline_item(t) for t in _as_list(content.get("timeline"))]
+    out["suggested_questions"] = [
+        q if isinstance(q, str) else str(q) for q in content.get("suggested_questions", [])
+    ]
+    return out
+
+
 async def build_brief(
     patient_id: str,
     truth: CurrentTruthDTO,
@@ -110,8 +214,10 @@ async def build_brief(
     source_documents: list[str],
 ) -> DoctorBriefDTO:
     """Generate the full Doctor Brief: model prose + code-computed flags."""
-    content = await reasoner.generate_brief(truth)
+    content = normalize_brief_content(await reasoner.generate_brief(truth))
     flags = compute_flags(truth, settings.CONFIDENCE_THRESHOLD)
+    priority_data = compute_priority(truth)
+    specialist_type = content.get("specialist_type") or default_specialist_type(truth)
 
     brief = DoctorBriefDTO(
         brief_id=new_id("brf", 3),
@@ -129,5 +235,9 @@ async def build_brief(
         suggested_questions=content.get("suggested_questions", []),
         source_documents=source_documents,
         confidence_notes=_confidence_notes(truth, flags),
+        referred_by=content.get("referred_by"),
+        referral_reason=content.get("referral_reason"),
+        specialist_type=specialist_type,
+        priority=BriefPriority.model_validate(priority_data),
     )
     return brief

@@ -41,11 +41,15 @@ async def persist_extraction(db: AsyncSession, claims_json: ClaimsJSON) -> None:
 async def persist_claims(
     db: AsyncSession, patient_id: str, document_id: str, claims: list[Claim]
 ) -> None:
-    """Append claims (append-only). normalized_key set here for reducer grouping."""
+    """Append claims (append-only). normalized_key set here for reducer grouping.
+
+    Claim IDs from extractors are ephemeral (models often reuse clm_001, clm_002);
+    always assign fresh server IDs for the DB primary key.
+    """
     for c in claims:
         db.add(
             ClaimRow(
-                id=c.claim_id if c.claim_id.startswith("clm_") else new_id("clm", 5),
+                id=new_id("clm", 5),
                 patient_id=patient_id,
                 document_id=document_id,
                 claim_type=c.type,

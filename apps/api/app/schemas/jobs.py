@@ -8,7 +8,7 @@ from pydantic import BaseModel
 JobStatus = Literal["queued", "running", "completed", "failed"]
 
 # Canonical pipeline stage order.
-STAGES: list[str] = ["extraction", "validation", "memory", "brief", "summary", "share"]
+STAGES: list[str] = ["extraction", "validation", "memory", "explanation", "brief", "share"]
 
 
 class JobStatusDTO(BaseModel):

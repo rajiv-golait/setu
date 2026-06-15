@@ -41,6 +41,7 @@ class Patient(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     lang_pref: Mapped[str] = mapped_column(String, default="mr")
+    telegram_chat_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     patient_token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
