@@ -1,6 +1,7 @@
 import { API_BASE } from "./constants";
 import type {
   AccessLogEntry,
+  AdminProviderRecord,
   AnalyticsOverview,
   Appointment,
   AssignedPatient,
@@ -256,6 +257,11 @@ export async function updateProviderMe(body: {
   display_name?: string;
   specialty?: string;
   facility?: string;
+  location?: string;
+  bio?: string;
+  consultation_fee?: number;
+  experience_years?: number;
+  languages?: string[];
 }): Promise<ProviderRecord> {
   return request<ProviderRecord>("/providers/me", {
     method: "PATCH",
@@ -286,6 +292,8 @@ export async function listTriage(patientId: string): Promise<TriageResult[]> {
 export async function createAppointment(body: {
   patient_id: string;
   specialty: string;
+  provider_id?: string;
+  slot_id?: string;
   scheduled_for?: string;
   referral_id?: string;
   triage_id?: string;
@@ -303,15 +311,33 @@ export async function listAppointments(status?: string): Promise<Appointment[]> 
   return request<Appointment[]>(`/appointments${q}`);
 }
 
+export async function getAppointment(appointmentId: string): Promise<Appointment> {
+  return request<Appointment>(`/appointments/${appointmentId}`);
+}
+
 export async function patchAppointment(
   appointmentId: string,
   action: string,
+  opts?: { reason?: string; new_slot_id?: string },
 ): Promise<Appointment> {
   return request<Appointment>(`/appointments/${appointmentId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ action, ...opts }),
   });
+}
+
+export interface VisitSummary {
+  encounter_id: string;
+  appointment_id: string | null;
+  status: string;
+  notes: Array<{ note_type: string; body: string; at: string }>;
+  prescriptions: Array<{ id: string; items: Record<string, unknown>; issued_at: string }>;
+  disclaimer: string;
+}
+
+export async function getAppointmentVisitSummary(appointmentId: string): Promise<VisitSummary> {
+  return request(`/appointments/${appointmentId}/visit-summary`);
 }
 
 // --- Vitals ---
@@ -401,6 +427,29 @@ export async function getAnalyticsOverview(
   return request<AnalyticsOverview>(`/admin/analytics/overview${q}`);
 }
 
+// --- Admin doctor registry ---
+
+export async function listAdminProviders(): Promise<AdminProviderRecord[]> {
+  return request<AdminProviderRecord[]>("/admin/providers");
+}
+
+export async function grantAdminProvider(body: {
+  phone: string;
+  display_name?: string;
+  specialty?: string;
+  facility?: string;
+}): Promise<AdminProviderRecord> {
+  return request<AdminProviderRecord>("/admin/providers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function revokeAdminProvider(providerId: string): Promise<void> {
+  await request(`/admin/providers/${providerId}`, { method: "DELETE" });
+}
+
 // --- Compliance ---
 
 export async function withdrawConsent(patientId: string): Promise<{ withdrawn: boolean }> {
@@ -413,6 +462,266 @@ export async function withdrawConsent(patientId: string): Promise<{ withdrawn: b
 
 export async function getAccessLog(patientId: string): Promise<AccessLogEntry[]> {
   return request<AccessLogEntry[]>(`/patients/${patientId}/access-log`);
+}
+
+export async function getAuthMe(): Promise<import("./types").AuthMe> {
+  return request("/auth/me");
+}
+
+export async function searchProviders(params?: {
+  specialty?: string;
+  location?: string;
+  lang?: string;
+}): Promise<ProviderRecord[]> {
+  const q = new URLSearchParams();
+  if (params?.specialty) q.set("specialty", params.specialty);
+  if (params?.location) q.set("location", params.location);
+  if (params?.lang) q.set("lang", params.lang);
+  const suffix = q.toString() ? `?${q}` : "";
+  return request<ProviderRecord[]>(`/providers${suffix}`);
+}
+
+export async function getProviderPublic(id: string): Promise<ProviderRecord> {
+  return request<ProviderRecord>(`/providers/${id}`);
+}
+
+export async function getProviderDashboard(): Promise<import("./types").ProviderDashboard> {
+  return request("/providers/me/dashboard");
+}
+
+export async function listProviderSlots(
+  providerId: string,
+  from?: string,
+  to?: string,
+): Promise<import("./types").AppointmentSlot[]> {
+  const q = new URLSearchParams();
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+  const suffix = q.toString() ? `?${q}` : "";
+  return request(`/providers/${providerId}/slots${suffix}`);
+}
+
+export async function getPatientProfile(): Promise<import("./types").PatientProfile> {
+  return request("/patients/me/profile");
+}
+
+export async function updatePatientProfile(
+  body: Partial<import("./types").PatientProfile>,
+): Promise<import("./types").PatientProfile> {
+  return request("/patients/me/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function getPatientTimeline(patientId: string): Promise<import("./types").TimelineEvent[]> {
+  return request(`/patients/${patientId}/timeline`);
+}
+
+export async function getProviderPatientBrief(patientId: string): Promise<DoctorBrief> {
+  return request(`/providers/patients/${patientId}/brief`);
+}
+
+export async function recordVideoJoined(appointmentId: string): Promise<{ ok: boolean }> {
+  return request(`/appointments/${appointmentId}/video-joined`, { method: "POST" });
+}
+
+export async function listEncountersForPatient(patientId: string): Promise<import("./types").Encounter[]> {
+  return request(`/encounters/patient/${patientId}/list`);
+}
+
+export async function addEncounterNote(
+  encounterId: string,
+  body: { note_type: string; body: string; is_draft?: boolean },
+): Promise<{ id: string }> {
+  return request(`/encounters/${encounterId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function draftEncounterSummary(
+  encounterId: string,
+): Promise<{ draft_note_id: string; body: string }> {
+  return request(`/encounters/${encounterId}/draft-summary`, { method: "POST" });
+}
+
+export async function completeEncounter(encounterId: string): Promise<{ status: string }> {
+  return request(`/encounters/${encounterId}/complete`, { method: "POST" });
+}
+
+export async function addEncounterPrescription(
+  encounterId: string,
+  items: Array<Record<string, string>>,
+): Promise<{ id: string }> {
+  return request(`/encounters/${encounterId}/prescriptions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+}
+
+export interface InAppNotification {
+  id: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown> | null;
+  status: string;
+  created_at: string;
+}
+
+export async function listNotifications(): Promise<InAppNotification[]> {
+  return request("/notifications");
+}
+
+export async function getUnreadNotificationCount(): Promise<number> {
+  const res = await request<{ count: number }>("/notifications/unread-count");
+  return res.count;
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await request(`/notifications/${id}/read`, { method: "PATCH" });
+}
+
+export async function listProviderPatients(): Promise<Array<{ id: string; display_name?: string | null }>> {
+  return request("/providers/me/patients");
+}
+
+export async function listAdminAppointments(status?: string): Promise<Appointment[]> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request(`/admin/appointments${q}`);
+}
+
+export async function getAdminProvider(id: string): Promise<AdminProviderRecord> {
+  return request(`/admin/providers/${id}`);
+}
+
+export async function listAdminProviderCredentials(providerId: string): Promise<
+  Array<{ id: string; doc_type: string; status: string; created_at: string }>
+> {
+  return request(`/admin/providers/${providerId}/credentials`);
+}
+
+export async function registerProvider(body: {
+  display_name?: string;
+  specialty?: string;
+  facility?: string;
+}): Promise<ProviderRecord> {
+  return request("/providers/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function symptomChatTriage(body: {
+  symptoms: string[];
+  age?: number;
+  existing_conditions?: string[];
+  lang?: string;
+}): Promise<{ priority: string; recommendation: string; message: string; disclaimer: string }> {
+  return request("/chat/triage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function verifyAdminProvider(
+  providerId: string,
+  status: string,
+): Promise<AdminProviderRecord> {
+  return request(`/admin/providers/${providerId}/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function listAdminPatients(): Promise<PatientRecord[]> {
+  return request("/admin/patients");
+}
+
+export async function uploadProviderCredential(
+  docType: string,
+  file: File,
+): Promise<{ id: string; doc_type: string; status: string }> {
+  const form = new FormData();
+  form.append("doc_type", docType);
+  form.append("file", file);
+  return request("/providers/me/credentials", { method: "POST", body: form });
+}
+
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  body: string;
+  status: string;
+  reporter_role: string;
+  created_at: string;
+}
+
+export async function createSupportTicket(body: {
+  subject: string;
+  body: string;
+}): Promise<SupportTicket> {
+  return request("/support/tickets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listSupportTickets(): Promise<SupportTicket[]> {
+  return request("/support/tickets");
+}
+
+export async function updateSupportTicket(
+  ticketId: string,
+  status: string,
+): Promise<{ id: string; status: string }> {
+  return request(`/support/tickets/${ticketId}?status=${encodeURIComponent(status)}`, {
+    method: "PATCH",
+  });
+}
+
+export async function getNotificationPreferences(): Promise<
+  Array<{ channel: string; enabled: boolean }>
+> {
+  return request("/notifications/preferences");
+}
+
+export async function updateNotificationPreference(
+  channel: string,
+  enabled: boolean,
+): Promise<{ channel: string; enabled: boolean }> {
+  return request("/notifications/preferences", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ channel, enabled }),
+  });
+}
+
+export async function getProviderAvailability(): Promise<
+  Array<{ day_of_week: number; start_time: string; end_time: string; slot_minutes: number }>
+> {
+  return request("/providers/me/availability");
+}
+
+export async function getEncounter(encounterId: string): Promise<Encounter & { consult_room?: string | null }> {
+  return request(`/encounters/${encounterId}`);
+}
+
+export async function setProviderAvailability(
+  rules: Array<{ day_of_week: number; start_time: string; end_time: string; slot_minutes: number }>,
+): Promise<void> {
+  await request("/providers/me/availability", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rules }),
+  });
 }
 
 export async function uploadDocumentWithId(

@@ -4,22 +4,42 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { DoctorShell } from "@/components/layout/role-shells";
+import { CancelDialog } from "@/components/appointments/cancel-dialog";
+import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
 import { VideoConsult } from "@/components/doctor/video-consult";
-import { listAppointments, patchAppointment } from "@/lib/api";
+import { getAppointment, listEncountersForPatient, patchAppointment } from "@/lib/api";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
 export default function DoctorAppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [appt, setAppt] = useState<Appointment | null>(null);
+  const [encounterId, setEncounterId] = useState<string | null>(null);
+  const [showReschedule, setShowReschedule] = useState(false);
+
+  const refresh = () => {
+    getAppointment(id)
+      .then((found) => {
+        setAppt(found);
+        if (found?.patient_id) {
+          listEncountersForPatient(found.patient_id)
+            .then((encs) => {
+              const match = encs.find((e) => e.appointment_id === id);
+              if (match) setEncounterId(match.id);
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => setAppt(null));
+  };
 
   useEffect(() => {
-    listAppointments().then((list) => setAppt(list.find((a) => a.id === id) ?? null));
+    refresh();
   }, [id]);
 
-  const act = async (action: string) => {
+  const act = async (action: string, opts?: { reason?: string }) => {
     if (!appt) return;
-    const updated = await patchAppointment(appt.id, action);
+    const updated = await patchAppointment(appt.id, action, opts);
     setAppt(updated);
   };
 
@@ -35,6 +55,12 @@ export default function DoctorAppointmentDetailPage() {
           <h1 className="mt-4 text-xl font-semibold">{appt.specialty}</h1>
           <p className="text-sm text-text-muted">Patient {appt.patient_id}</p>
           <p className="mt-1 capitalize text-sm">Status: {appt.status}</p>
+          <Link
+            href={`/doctor/patients/${appt.patient_id}`}
+            className="mt-2 inline-block text-sm font-semibold text-primary"
+          >
+            View patient record →
+          </Link>
 
           {appt.status === "requested" && (
             <div className="mt-4 flex gap-2">
@@ -43,19 +69,48 @@ export default function DoctorAppointmentDetailPage() {
             </div>
           )}
 
-          {appt.consult_room && (
+          {appt.consult_room && !["completed", "cancelled", "declined"].includes(appt.status) && (
             <VideoConsult
               roomName={appt.consult_room}
               joinLabel="Start video consultation"
+              appointmentId={appt.id}
               onJoin={() => act("confirm").catch(() => undefined)}
             />
           )}
 
-          {appt.status === "accepted" || appt.status === "confirmed" ? (
-            <SecondaryButton className="mt-4" onClick={() => act("complete")}>
-              Mark completed
-            </SecondaryButton>
-          ) : null}
+          {encounterId && (
+            <Link
+              href={`/doctor/consultations/${encounterId}`}
+              className="mt-4 inline-block text-sm font-semibold text-primary"
+            >
+              Open consultation notes →
+            </Link>
+          )}
+
+          {["accepted", "confirmed"].includes(appt.status) && (
+            <>
+              <SecondaryButton className="mt-4" onClick={() => act("complete")}>
+                Mark completed
+              </SecondaryButton>
+              <SecondaryButton
+                className="mt-2"
+                onClick={() => act("no_show", { reason: "Patient did not join" })}
+              >
+                Mark no-show
+              </SecondaryButton>
+              <SecondaryButton className="mt-2" onClick={() => setShowReschedule((v) => !v)}>
+                Reschedule
+              </SecondaryButton>
+              {showReschedule && appt.provider_id && (
+                <RescheduleFlow
+                  appointmentId={appt.id}
+                  providerId={appt.provider_id}
+                  onDone={refresh}
+                />
+              )}
+              <CancelDialog onConfirm={(reason) => act("cancel", { reason })} />
+            </>
+          )}
         </>
       )}
     </DoctorShell>

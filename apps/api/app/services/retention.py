@@ -18,7 +18,6 @@ explicit cascade.
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
@@ -26,21 +25,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.models import Document
+from app.services.storage import get_storage
 
 logger = logging.getLogger("setu.retention")
 
 
 def _remove_file(path: str | None) -> bool:
-    """Best-effort delete of a raw file. Returns True if a file was removed."""
     if not path:
         return False
-    try:
-        if os.path.isfile(path):
-            os.remove(path)
-            return True
-    except OSError as exc:  # noqa: BLE001
-        logger.warning("failed to remove raw file %s: %s", path, exc)
-    return False
+    return get_storage().delete(path)
 
 
 async def purge_document(db: AsyncSession, doc: Document) -> bool:

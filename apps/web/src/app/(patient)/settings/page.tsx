@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Trash2 } from "lucide-react";
-import { deletePatientData, getAccessLog, withdrawConsent } from "@/lib/api";
+import { deletePatientData, getAccessLog, getNotificationPreferences, updateNotificationPreference, withdrawConsent, createSupportTicket } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import { clearLocalConsent } from "@/lib/consent";
 import { ErrorPanel } from "@/components/ui/state-panel";
@@ -17,13 +17,31 @@ export default function SettingsPage() {
   const [done, setDone] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [withdrew, setWithdrew] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<Array<{ channel: string; enabled: boolean }>>([]);
+  const [ticketSubject, setTicketSubject] = useState("");
+  const [ticketBody, setTicketBody] = useState("");
+  const [ticketSent, setTicketSent] = useState(false);
 
   useEffect(() => {
     if (!patient?.id) return;
     getAccessLog(patient.id)
       .then(setAccessLog)
       .catch(() => setAccessLog([]));
+    getNotificationPreferences()
+      .then(setNotifPrefs)
+      .catch(() => setNotifPrefs([]));
   }, [patient?.id]);
+
+  const toggleNotif = async (channel: string, enabled: boolean) => {
+    await updateNotificationPreference(channel, enabled);
+    setNotifPrefs((prefs) => {
+      const existing = prefs.find((p) => p.channel === channel);
+      if (existing) {
+        return prefs.map((p) => (p.channel === channel ? { ...p, enabled } : p));
+      }
+      return [...prefs, { channel, enabled }];
+    });
+  };
 
   const onWithdrawConsent = async () => {
     if (!patient?.id) return;
@@ -76,6 +94,29 @@ export default function SettingsPage() {
           <ErrorPanel title="Delete failed" message={error} />
         </div>
       )}
+
+      <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+        <h2 className="text-sm font-semibold">Notification preferences</h2>
+        <p className="mt-2 text-sm text-text-muted">
+          Appointment reminders via SMS, email, or WhatsApp when configured.
+        </p>
+        <div className="mt-4 space-y-3">
+          {(["sms", "email", "whatsapp"] as const).map((ch) => {
+            const pref = notifPrefs.find((p) => p.channel === ch);
+            const enabled = pref?.enabled ?? false;
+            return (
+              <label key={ch} className="flex items-center justify-between text-sm">
+                <span className="font-semibold capitalize">{ch}</span>
+                <input
+                  type="checkbox"
+                  checked={enabled}
+                  onChange={(e) => void toggleNotif(ch, e.target.checked)}
+                />
+              </label>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
         <h2 className="text-sm font-semibold">Withdraw processing consent</h2>
@@ -141,6 +182,41 @@ export default function SettingsPage() {
               className="min-h-[44px] rounded-[13px] border border-border text-sm font-semibold text-primary"
             >
               Cancel
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+        <h2 className="text-sm font-semibold">Report an issue</h2>
+        <p className="mt-2 text-sm text-text-muted">Open a support ticket for data or account disputes.</p>
+        {ticketSent ? (
+          <p className="mt-3 text-sm text-success">Ticket submitted. We will respond via your registered contact.</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            <input
+              value={ticketSubject}
+              onChange={(e) => setTicketSubject(e.target.value)}
+              placeholder="Subject"
+              className="w-full rounded-card border border-border px-3 py-2 text-sm"
+            />
+            <textarea
+              value={ticketBody}
+              onChange={(e) => setTicketBody(e.target.value)}
+              rows={3}
+              placeholder="Describe the issue…"
+              className="w-full rounded-card border border-border px-3 py-2 text-sm"
+            />
+            <button
+              type="button"
+              disabled={!ticketSubject.trim() || !ticketBody.trim()}
+              onClick={async () => {
+                await createSupportTicket({ subject: ticketSubject, body: ticketBody });
+                setTicketSent(true);
+              }}
+              className="min-h-[44px] w-full rounded-[13px] border border-border text-sm font-semibold text-primary disabled:opacity-50"
+            >
+              Submit ticket
             </button>
           </div>
         )}

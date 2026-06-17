@@ -22,6 +22,8 @@ export default function NewAppointmentClient() {
   const searchParams = useSearchParams();
   const triageId = searchParams.get("triage_id") ?? undefined;
   const patientIdParam = searchParams.get("patient_id") ?? undefined;
+  const providerId = searchParams.get("provider_id") ?? undefined;
+  const slotId = searchParams.get("slot_id") ?? undefined;
   const { patient, ensurePatient } = usePatient();
   const { t } = useLocale();
   const [specialty, setSpecialty] = useState(SPECIALTIES[0]);
@@ -39,6 +41,8 @@ export default function NewAppointmentClient() {
         scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
         triage_id: triageId,
         notes: notes || undefined,
+        provider_id: providerId,
+        slot_id: slotId,
       });
       router.push("/appointments");
     } catch (e) {

@@ -70,6 +70,14 @@ export default function MemoryPage() {
   return (
     <div className="animate-setu-fade px-5 pb-24 pt-5">
       <h1 className="text-[23px] font-semibold tracking-tight">Health memory</h1>
+      <div className="mt-2 flex flex-wrap gap-3 text-sm">
+        <Link href="/timeline" className="font-semibold text-primary">
+          View timeline →
+        </Link>
+        <Link href="/profile" className="font-semibold text-primary">
+          Health profile →
+        </Link>
+      </div>
       <p className="mt-1 text-sm text-text-muted">
         Last updated {updated}
         {docCount != null && docCount > 0 && ` · built from ${docCount} document${docCount === 1 ? "" : "s"}`}

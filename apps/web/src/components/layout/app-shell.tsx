@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomNav } from "./bottom-nav";
+import { NotificationBell } from "@/components/ui/notification-bell";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
 
 export function AppShell({
@@ -25,6 +26,11 @@ export function AppShell({
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-surface">
+      {!hideNav && (
+        <div className="flex justify-end px-4 pt-3">
+          <NotificationBell />
+        </div>
+      )}
       <main className={hideNav ? "pb-6" : "pb-24"}>{children}</main>
       {!hideNav && <BottomNav />}
     </div>

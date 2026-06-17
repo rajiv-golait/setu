@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Video, Mic } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { useLocale } from "@/lib/hooks/use-locale";
+import { recordVideoJoined } from "@/lib/api";
 
 const JITSI_ORIGIN = "https://meet.jit.si";
 
@@ -22,11 +23,13 @@ export function VideoConsult({
   joinLabel = "Join video consultation",
   mode = "auto",
   onJoin,
+  appointmentId,
 }: {
   roomName: string;
   joinLabel?: string;
   mode?: VideoMode;
   onJoin?: () => void;
+  appointmentId?: string;
 }) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
@@ -43,6 +46,9 @@ export function VideoConsult({
 
   const handleJoin = () => {
     onJoin?.();
+    if (appointmentId) {
+      void recordVideoJoined(appointmentId).catch(() => undefined);
+    }
     setOpen(true);
   };
 

@@ -1,19 +1,21 @@
 """Document upload + retrieval. Upload starts the pipeline via BackgroundTasks."""
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import jobs_store
 from app.db.models import Document, Extraction, Patient
 from app.db.session import get_db
-from app.deps import _check_patient_access, get_auth_user_id, require_patient_access
+from app.deps import _check_patient_access, get_auth_user_id, get_user_role, require_patient_access
 from app.errors import not_found
 from app.ids import new_id
 from app.schemas.claims import ClaimsJSON
 from app.schemas.common import DocumentDTO, DocumentListItem, DocumentUploadResponse
 from app.services import ingestion, retention
+from app.services.audit_phi import audit_phi_read
+from app.services.job_queue import enqueue_pipeline
 from app.services.orchestrator import run_pipeline
 
 router = APIRouter(tags=["documents"])
@@ -49,10 +51,10 @@ async def upload_document(
     await _check_patient_access(patient_id, db, auth_user_id)
     await ingestion.require_consent(db, patient_id)
 
-    storage_path, mime, guessed_type, original_hash = await ingestion.store_upload(file)
+    storage_path, mime, guessed_type, original_hash, enc_key = await ingestion.store_upload(file)
     resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else guessed_type
     doc = await ingestion.create_document(
-        db, patient_id, storage_path, mime, resolved_type, original_hash
+        db, patient_id, storage_path, mime, resolved_type, original_hash, enc_key
     )
     await db.commit()
 
@@ -60,6 +62,7 @@ async def upload_document(
     state = jobs_store.new_job_state(job_id, doc.id)
     await jobs_store.save(state)
 
+    await enqueue_pipeline(job_id, doc.id, patient_id)
     background.add_task(run_pipeline, job_id, doc.id, patient_id)
 
     return DocumentUploadResponse(document_id=doc.id, job_id=job_id, status="queued")
@@ -67,9 +70,20 @@ async def upload_document(
 
 @router.get("/patients/{patient_id}/documents", response_model=list[DocumentListItem])
 async def list_patient_documents(
+    request: Request,
     patient: Patient = Depends(require_patient_access),
     db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+    role: str = Depends(get_user_role),
 ) -> list[DocumentListItem]:
+    await audit_phi_read(
+        db,
+        patient_id=patient.id,
+        resource="documents",
+        actor_id=auth_user_id,
+        actor_role=role,
+        request=request,
+    )
     rows = (
         await db.execute(
             select(Document)
@@ -77,7 +91,7 @@ async def list_patient_documents(
             .order_by(Document.uploaded_at.desc())
         )
     ).scalars().all()
-    return [
+    items = [
         DocumentListItem(
             id=doc.id,
             patient_id=doc.patient_id,
@@ -89,6 +103,8 @@ async def list_patient_documents(
         )
         for doc in rows
     ]
+    await db.commit()
+    return items
 
 
 @router.get("/documents/{document_id}", response_model=DocumentDTO)

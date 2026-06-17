@@ -58,6 +58,7 @@ class Document(Base):
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
     doc_type: Mapped[str | None] = mapped_column(String, nullable=True)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    encryption_key_id: Mapped[str | None] = mapped_column(String, nullable=True)
     mime: Mapped[str | None] = mapped_column(String, nullable=True)
     source: Mapped[str] = mapped_column(String, default="upload")
     status: Mapped[str] = mapped_column(String, default="pending")  # pending|extracted|failed|purged
@@ -208,18 +209,200 @@ class Referral(Base):
 
 
 class Provider(Base):
-    """Phase 1 — clinician/specialist account. Role lives in Supabase
-    app_metadata.role='provider'; this row holds the provider profile that the
-    doctor-side of appointments (F2) and the doctor portal read. Auto-provisioned
-    on first GET /providers/me (same pattern as patient GET /me)."""
+    """Clinician/specialist account. Role in Supabase app_metadata.role='provider'."""
 
     __tablename__ = "providers"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)  # prv_xxxx
     supabase_user_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    phone: Mapped[str | None] = mapped_column(String, nullable=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     specialty: Mapped[str | None] = mapped_column(String, nullable=True)
-    facility: Mapped[str | None] = mapped_column(String, nullable=True)  # clinic/hospital
+    facility: Mapped[str | None] = mapped_column(String, nullable=True)
+    verification_status: Mapped[str] = mapped_column(String, default="pending")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    languages: Mapped[list | None] = mapped_column(JSONType, nullable=True)
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    consultation_fee: Mapped[float | None] = mapped_column(Numeric, nullable=True)
+    bio: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ProviderCredential(Base):
+    __tablename__ = "provider_credentials"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    doc_type: Mapped[str] = mapped_column(String, nullable=False)
+    storage_path: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    reviewed_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ProviderAccessGrant(Base):
+    __tablename__ = "provider_access_grants"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
+    appointment_id: Mapped[str | None] = mapped_column(ForeignKey("appointments.id"), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class PatientProfile(Base):
+    __tablename__ = "patient_profiles"
+
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"), primary_key=True)
+    date_of_birth: Mapped[date | None] = mapped_column(Date, nullable=True)
+    gender: Mapped[str | None] = mapped_column(String, nullable=True)
+    blood_group: Mapped[str | None] = mapped_column(String, nullable=True)
+    allergies_known: Mapped[list | None] = mapped_column(JSONType, nullable=True)
+    chronic_conditions: Mapped[list | None] = mapped_column(JSONType, nullable=True)
+    emergency_contact: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
+    district: Mapped[str | None] = mapped_column(String, nullable=True)
+    state: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ProviderAvailability(Base):
+    __tablename__ = "provider_availability"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_time: Mapped[str] = mapped_column(String, nullable=False)
+    end_time: Mapped[str] = mapped_column(String, nullable=False)
+    slot_minutes: Mapped[int] = mapped_column(Integer, default=30)
+    timezone: Mapped[str] = mapped_column(String, default="Asia/Kolkata")
+
+
+class AppointmentSlot(Base):
+    __tablename__ = "appointment_slots"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String, default="open")
+
+    __table_args__ = (UniqueConstraint("provider_id", "starts_at", name="uq_slot_provider_start"),)
+
+
+class ConsultationSession(Base):
+    __tablename__ = "consultation_sessions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    appointment_id: Mapped[str] = mapped_column(ForeignKey("appointments.id"))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    video_joined_patient_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    video_joined_provider_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Encounter(Base):
+    __tablename__ = "encounters"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    appointment_id: Mapped[str | None] = mapped_column(ForeignKey("appointments.id"), nullable=True)
+    encounter_type: Mapped[str] = mapped_column(String, default="tele")
+    status: Mapped[str] = mapped_column(String, default="open")
+    recording_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ClinicalNote(Base):
+    __tablename__ = "clinical_notes"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    encounter_id: Mapped[str] = mapped_column(ForeignKey("encounters.id"))
+    author_id: Mapped[str] = mapped_column(String, nullable=False)
+    note_type: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str] = mapped_column(String, nullable=False)
+    is_draft: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class Prescription(Base):
+    __tablename__ = "prescriptions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    encounter_id: Mapped[str] = mapped_column(ForeignKey("encounters.id"))
+    patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
+    provider_id: Mapped[str] = mapped_column(ForeignKey("providers.id"))
+    items: Mapped[dict] = mapped_column(JSONType, nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    channel: Mapped[str] = mapped_column(String, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    __table_args__ = (UniqueConstraint("user_id", "channel", name="uq_notif_pref"),)
+
+
+class NotificationOutbox(Base):
+    __tablename__ = "notification_outbox"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    recipient: Mapped[str] = mapped_column(String, nullable=False)
+    channel: Mapped[str] = mapped_column(String, nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONType, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class InAppNotification(Base):
+    __tablename__ = "in_app_notifications"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str] = mapped_column(String, nullable=False)
+    data: Mapped[dict | None] = mapped_column(JSONType, nullable=True)
+    status: Mapped[str] = mapped_column(String, default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SupportTicket(Base):
+    __tablename__ = "support_tickets"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    reporter_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    reporter_role: Mapped[str] = mapped_column(String, nullable=False)
+    subject: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, default="open")
+    assigned_to: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class AiRequestLog(Base):
+    __tablename__ = "ai_request_logs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    request_type: Mapped[str] = mapped_column(String, nullable=False)
+    provider_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    patient_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    fallback_used: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
@@ -243,8 +426,12 @@ class Appointment(Base):
     consult_room: Mapped[str | None] = mapped_column(String, nullable=True)
     referral_id: Mapped[str | None] = mapped_column(ForeignKey("referrals.id"), nullable=True)
     triage_id: Mapped[str | None] = mapped_column(ForeignKey("triage_results.id"), nullable=True)
-    booked_by: Mapped[str | None] = mapped_column(String, nullable=True)  # patient|health_worker|provider actor id
+    booked_by: Mapped[str | None] = mapped_column(String, nullable=True)
+    slot_id: Mapped[str | None] = mapped_column(ForeignKey("appointment_slots.id"), nullable=True)
     notes: Mapped[str | None] = mapped_column(String, nullable=True)
+    cancellation_reason: Mapped[str | None] = mapped_column(String, nullable=True)
+    rescheduled_from_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    follow_up_for_appointment_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow

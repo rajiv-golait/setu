@@ -71,11 +71,50 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_JWT_SECRET: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_ENABLED: bool = False
 
     # --- Demo ---
     DEMO_MODE: bool = False
     SEED_PATIENT_ID: str = "pat_demo"
+
+    # --- Production gate ---
+    PRODUCTION: bool = False
+
+    # --- Object storage (local|S3) ---
+    STORAGE_BACKEND: str = "local"  # local|s3
+    S3_BUCKET: str = ""
+    S3_REGION: str = "ap-south-1"
+    S3_ENDPOINT_URL: str = ""  # optional MinIO / compatible
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+
+    # --- Notifications ---
+    SMS_PROVIDER: str = ""  # msg91|twilio
+    MSG91_AUTH_KEY: str = ""
+    MSG91_SENDER_ID: str = "SETUHL"
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_FROM_NUMBER: str = ""
+    SENDGRID_API_KEY: str = ""
+    NOTIFICATION_FROM_EMAIL: str = "noreply@setu.health"
+    WHATSAPP_API_URL: str = ""
+    WHATSAPP_API_TOKEN: str = ""
+
+    # --- Observability ---
+    SENTRY_DSN: str = ""
+
+    @model_validator(mode="after")
+    def _validate_production(self) -> "Settings":
+        if not self.PRODUCTION:
+            return self
+        if self.SECRET_KEY == "dev-only":
+            raise ValueError("PRODUCTION=true requires a non-default SECRET_KEY")
+        if not self.SUPABASE_ENABLED:
+            raise ValueError("PRODUCTION=true requires SUPABASE_ENABLED=true")
+        if self.EXTRACTION_PROVIDER == "cloud" and not self.GOOGLE_API_KEY and not self.OPENAI_API_KEY:
+            raise ValueError("PRODUCTION with cloud extraction requires GOOGLE_API_KEY or OPENAI_API_KEY")
+        return self
 
     @model_validator(mode="before")
     @classmethod

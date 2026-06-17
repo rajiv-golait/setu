@@ -1,15 +1,59 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { getAuthMe, getProviderMe } from "@/lib/api";
+import { homeForRole, roleFromMetadata, type UserRole } from "@/lib/auth/role";
 import { createClient } from "@/lib/supabase/client";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
 
-export default function LoginForm() {
+export type LoginPortal = "patient" | "provider";
+
+const PORTAL_COPY: Record<
+  LoginPortal,
+  { badge: string; title: string; subtitle: string; defaultNext: string; otherHref: string; otherLabel: string }
+> = {
+  patient: {
+    badge: "Setu · Patient",
+    title: "Sign in with your phone",
+    subtitle: "We use your number only to secure your health record.",
+    defaultNext: "/",
+    otherHref: "/doctor/login",
+    otherLabel: "Doctor or specialist? Sign in here",
+  },
+  provider: {
+    badge: "Setu · Doctor",
+    title: "Doctor sign in",
+    subtitle: "For specialists and clinic staff. Use the mobile number registered with your clinic.",
+    defaultNext: "/doctor",
+    otherHref: "/login",
+    otherLabel: "Patient? Sign in here",
+  },
+};
+
+function roleAllowedOnPortal(portal: LoginPortal, role: UserRole): boolean {
+  if (portal === "provider") return role === "provider" || role === "admin";
+  return true;
+}
+
+function portalRoleError(portal: LoginPortal): string {
+  if (portal === "provider") {
+    return "This number is not registered as a doctor. Ask your admin to set role to provider in Supabase, or use patient sign-in.";
+  }
+  return "Sign-in failed for this portal.";
+}
+
+type LoginFormProps = {
+  portal?: LoginPortal;
+};
+
+export default function LoginForm({ portal = "patient" }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/";
+  const copy = PORTAL_COPY[portal];
+  const next = searchParams.get("next") ?? copy.defaultNext;
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -63,11 +107,44 @@ export default function LoginForm() {
       });
       if (err) throw err;
       const { data: userData } = await supabase.auth.getUser();
-      const role = (userData.user?.app_metadata as { role?: string } | undefined)?.role;
-      let dest = next.startsWith("/login") ? "/onboarding" : next;
-      if (role === "provider") dest = "/doctor";
-      else if (role === "health_worker") dest = "/worker";
-      else if (role === "admin") dest = "/admin";
+      const role = roleFromMetadata(
+        userData.user?.app_metadata as Record<string, unknown> | undefined,
+      );
+
+      if (!roleAllowedOnPortal(portal, role)) {
+        await supabase.auth.signOut();
+        throw new Error(portalRoleError(portal));
+      }
+
+      let dest = next;
+      try {
+        const me = await getAuthMe();
+        if (me.role === "provider" && me.verification_status !== "approved") {
+          const provider = await getProviderMe().catch(() => null);
+          if (!provider?.display_name || !provider?.specialty) {
+            router.replace("/doctor/onboarding");
+            return;
+          }
+          router.replace("/doctor/pending");
+          return;
+        }
+        if (next.startsWith("/login") || next.startsWith("/doctor/login")) {
+          dest = homeForRole(me.role as UserRole);
+        } else if (portal === "provider") {
+          dest = "/doctor";
+        } else if (portal === "patient" && dest === "/") {
+          dest = me.role === "patient" ? "/onboarding" : homeForRole(me.role as UserRole);
+        }
+      } catch {
+        if (next.startsWith("/login") || next.startsWith("/doctor/login")) {
+          dest = homeForRole(role);
+        } else if (portal === "provider") {
+          dest = "/doctor";
+        } else if (portal === "patient" && dest === "/") {
+          dest = role === "patient" ? "/onboarding" : homeForRole(role);
+        }
+      }
+
       router.replace(dest);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invalid OTP");
@@ -78,11 +155,9 @@ export default function LoginForm() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10 animate-setu-fade">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">Setu</p>
-      <h1 className="mt-1 text-[26px] font-semibold">Sign in with your phone</h1>
-      <p className="mt-2 text-sm text-text-muted">
-        We use your number only to secure your health record.
-      </p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">{copy.badge}</p>
+      <h1 className="mt-1 text-[26px] font-semibold">{copy.title}</h1>
+      <p className="mt-2 text-sm text-text-muted">{copy.subtitle}</p>
 
       {step === "phone" ? (
         <div className="mt-8 space-y-4">
@@ -129,6 +204,12 @@ export default function LoginForm() {
       )}
 
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+
+      <p className="mt-8 text-center text-sm">
+        <Link href={copy.otherHref} className="font-semibold text-primary">
+          {copy.otherLabel}
+        </Link>
+      </p>
     </div>
   );
 }

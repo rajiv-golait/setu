@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { VideoConsult } from "@/components/doctor/video-consult";
-import { listAppointments, patchAppointment } from "@/lib/api";
+import { CancelDialog } from "@/components/appointments/cancel-dialog";
+import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
+import { getAppointment, patchAppointment } from "@/lib/api";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
@@ -13,21 +16,29 @@ export default function PatientAppointmentDetailPage() {
   const router = useRouter();
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showReschedule, setShowReschedule] = useState(false);
+
+  const refresh = () => {
+    getAppointment(id)
+      .then(setAppt)
+      .catch(() => setAppt(null))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    listAppointments()
-      .then((list) => setAppt(list.find((a) => a.id === id) ?? null))
-      .finally(() => setLoading(false));
+    refresh();
   }, [id]);
 
-  const act = async (action: string) => {
+  const act = async (action: string, opts?: { reason?: string }) => {
     if (!appt) return;
-    const updated = await patchAppointment(appt.id, action);
+    const updated = await patchAppointment(appt.id, action, opts);
     setAppt(updated);
   };
 
   if (loading) return <p className="p-8 text-center text-sm text-text-faint">Loading…</p>;
   if (!appt) return <p className="p-8 text-center text-sm text-danger">Appointment not found</p>;
+
+  const canModify = ["requested", "accepted", "confirmed"].includes(appt.status);
 
   return (
     <div className="animate-setu-fade px-5 pb-8 pt-4">
@@ -42,8 +53,21 @@ export default function PatientAppointmentDetailPage() {
       <h1 className="text-xl font-semibold">{appt.specialty}</h1>
       <p className="mt-1 capitalize text-sm text-text-muted">Status: {appt.status}</p>
 
-      {appt.consult_room && (
-        <VideoConsult roomName={appt.consult_room} joinLabel="Join video consultation" />
+      {appt.status === "completed" && (
+        <Link
+          href={`/appointments/${appt.id}/summary`}
+          className="mt-4 inline-block text-sm font-semibold text-primary"
+        >
+          View visit summary →
+        </Link>
+      )}
+
+      {appt.consult_room && appt.status !== "completed" && appt.status !== "cancelled" && (
+        <VideoConsult
+          roomName={appt.consult_room}
+          joinLabel="Join video consultation"
+          appointmentId={appt.id}
+        />
       )}
 
       {appt.status === "accepted" && (
@@ -51,10 +75,21 @@ export default function PatientAppointmentDetailPage() {
           Confirm attendance
         </SecondaryButton>
       )}
-      {["requested", "accepted", "confirmed"].includes(appt.status) && (
-        <SecondaryButton className="mt-2" onClick={() => act("cancel")}>
-          Cancel
-        </SecondaryButton>
+
+      {canModify && (
+        <>
+          <SecondaryButton className="mt-4" onClick={() => setShowReschedule((v) => !v)}>
+            Reschedule
+          </SecondaryButton>
+          {showReschedule && appt.provider_id && (
+            <RescheduleFlow
+              appointmentId={appt.id}
+              providerId={appt.provider_id}
+              onDone={refresh}
+            />
+          )}
+          <CancelDialog onConfirm={(reason) => act("cancel", { reason })} />
+        </>
       )}
     </div>
   );

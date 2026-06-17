@@ -300,3 +300,80 @@ async def test_get_status_filter(client, session_factory, auth_enabled):
     rows = r.json()
     assert all(row["status"] == "requested" for row in rows)
     assert len(rows) == 1
+
+
+async def test_reschedule_releases_and_rebooks_slot(client, session_factory, auth_enabled):
+    from datetime import datetime, timedelta, timezone
+
+    from app.db.models import AppointmentSlot
+
+    from app.ids import new_id
+
+    patient_id = "pat_rs"
+    await _seed_patient(session_factory, patient_id=patient_id, supabase_user_id="u_pat_rs")
+    prv_id = await _seed_provider(session_factory, supabase_user_id="u_prov_rs", specialty="general")
+
+    async with session_factory() as db:
+        from app.db.models import Provider
+
+        row = (await db.execute(select(Provider).where(Provider.id == prv_id))).scalar_one()
+        row.verification_status = "approved"
+        now = datetime.now(timezone.utc)
+        slot_a = AppointmentSlot(
+            id=new_id("slot"),
+            provider_id=prv_id,
+            starts_at=now + timedelta(days=2),
+            ends_at=now + timedelta(days=2, hours=1),
+            status="open",
+        )
+        slot_b = AppointmentSlot(
+            id=new_id("slot"),
+            provider_id=prv_id,
+            starts_at=now + timedelta(days=3),
+            ends_at=now + timedelta(days=3, hours=1),
+            status="open",
+        )
+        db.add(slot_a)
+        db.add(slot_b)
+        await db.commit()
+        slot_a_id, slot_b_id = slot_a.id, slot_b.id
+
+    pat = _bearer(_token("u_pat_rs", "patient"))
+    prov = _bearer(_token("u_prov_rs", "provider"))
+
+    r = await client.post(
+        "/api/v1/appointments",
+        json={"patient_id": patient_id, "specialty": "general", "slot_id": slot_a_id},
+        headers=pat,
+    )
+    assert r.status_code == 201, r.text
+    appt_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/appointments/{appt_id}",
+        json={"action": "accept"},
+        headers=prov,
+    )
+    assert r.status_code == 200, r.text
+
+    r = await client.patch(
+        f"/api/v1/appointments/{appt_id}",
+        json={"action": "reschedule", "new_slot_id": slot_b_id},
+        headers=pat,
+    )
+    assert r.status_code == 200, r.text
+
+    async with session_factory() as db:
+        appt = (
+            await db.execute(select(Appointment).where(Appointment.id == appt_id))
+        ).scalar_one()
+        assert appt.slot_id == slot_b_id
+        old = (
+            await db.execute(select(AppointmentSlot).where(AppointmentSlot.id == slot_a_id))
+        ).scalar_one()
+        new = (
+            await db.execute(select(AppointmentSlot).where(AppointmentSlot.id == slot_b_id))
+        ).scalar_one()
+        assert old.status == "open"
+        assert new.status == "booked"
+

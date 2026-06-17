@@ -8,6 +8,7 @@ import {
   LayoutList,
   QrCode,
   Stethoscope,
+  UserRound,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -21,6 +22,7 @@ export function BottomNav() {
     { href: "/", label: t("nav.home"), icon: Camera },
     { href: "/summary", label: t("nav.summary"), icon: BookOpen },
     { href: "/triage", label: t("nav.triage"), icon: Stethoscope },
+    { href: "/doctors", label: t("nav.doctors"), icon: UserRound },
     { href: "/appointments", label: t("nav.appointments"), icon: Calendar },
     { href: "/memory", label: t("nav.memory"), icon: LayoutList },
     { href: "/share", label: t("nav.share"), icon: QrCode },

@@ -163,7 +163,72 @@ export interface ProviderRecord {
   display_name?: string | null;
   specialty?: string | null;
   facility?: string | null;
+  verification_status?: string;
+  experience_years?: number | null;
+  languages?: string[] | null;
+  location?: string | null;
+  consultation_fee?: number | null;
+  bio?: string | null;
   created_at: string;
+}
+
+export interface ProviderDashboard {
+  pending_requests: number;
+  today_appointments: number;
+  completed_this_week: number;
+  patient_count: number;
+  follow_ups_due: number;
+}
+
+export interface AppointmentSlot {
+  id: string;
+  provider_id: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+}
+
+export interface PatientProfile {
+  patient_id: string;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  blood_group?: string | null;
+  allergies_known?: string[] | null;
+  chronic_conditions?: string[] | null;
+  emergency_contact?: Record<string, string> | null;
+  district?: string | null;
+  state?: string | null;
+}
+
+export interface TimelineEvent {
+  event_type: string;
+  title: string;
+  at: string;
+  meta?: Record<string, unknown> | null;
+}
+
+export interface Encounter {
+  id: string;
+  patient_id: string;
+  provider_id: string;
+  appointment_id?: string | null;
+  status: string;
+  encounter_type: string;
+}
+
+export interface AuthMe {
+  user_id: string;
+  role: string;
+  verification_status?: string | null;
+  provider_id?: string | null;
+  patient_id?: string | null;
+  health_worker_id?: string | null;
+}
+
+export interface AdminProviderRecord extends ProviderRecord {
+  supabase_user_id: string;
+  phone?: string | null;
+  verification_status?: string;
 }
 
 // --- Triage (F1) ---
@@ -205,6 +270,7 @@ export interface Appointment {
   id: string;
   patient_id: string;
   provider_id?: string | null;
+  slot_id?: string | null;
   specialty: string;
   status: AppointmentStatus;
   scheduled_for?: string | null;

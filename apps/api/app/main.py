@@ -18,8 +18,19 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.errors import register_exception_handlers
+from app.routers import admin_appointments_router as admin_appointments
+from app.routers import admin_patients_router as admin_patients
+from app.routers import admin_providers_router as admin_providers
 from app.routers import analytics_router as analytics
 from app.routers import appointments_router as appointments
+from app.routers import auth_router as auth
+from app.routers import availability_router as availability
+from app.routers import encounters_router as encounters
+from app.routers import fhir_gateway_router as fhir_gateway
+from app.routers import notifications_router as notifications
+from app.routers import support_router as support
+from app.routers import symptom_chat_router as symptom_chat
+from app.routers import timeline_router as timeline
 from app.routers import (
     brief,
     consent,
@@ -48,9 +59,19 @@ API_PREFIX = "/api/v1"
 async def lifespan(app: FastAPI):
     # Models are reached over HTTP and never loaded here. Nothing to warm in-process.
     logging.getLogger("setu").info(
-        "SETU API starting (extraction=%s, reasoning=%s, demo=%s)",
-        settings.EXTRACTION_PROVIDER, settings.REASONING_PROVIDER, settings.DEMO_MODE,
+        "SETU API starting (extraction=%s, reasoning=%s, demo=%s, production=%s)",
+        settings.EXTRACTION_PROVIDER,
+        settings.REASONING_PROVIDER,
+        settings.DEMO_MODE,
+        settings.PRODUCTION,
     )
+    if settings.SENTRY_DSN:
+        try:
+            import sentry_sdk
+
+            sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger("setu").warning("sentry init skipped: %s", exc)
     if settings.database_url_unresolved:
         logging.getLogger("setu").error(
             "DATABASE_URL still contains [password] — set SUPABASE_DB_PASSWORD in .env"
@@ -104,6 +125,7 @@ app.add_middleware(
 register_exception_handlers(app)
 
 for r in (
+    auth,
     patients,
     documents,
     jobs,
@@ -117,10 +139,20 @@ for r in (
     reminders,
     triage,
     providers,
+    availability,
     appointments,
+    encounters,
+    timeline,
+    notifications,
+    support,
+    symptom_chat,
+    fhir_gateway,
     workers,
     vitals,
     analytics,
+    admin_providers,
+    admin_patients,
+    admin_appointments,
 ):
     app.include_router(r.router, prefix=API_PREFIX)
 

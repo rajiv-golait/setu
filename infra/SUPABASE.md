@@ -22,6 +22,7 @@ From **Project Settings → API**:
 SUPABASE_URL=https://xxxx.supabase.co
 SUPABASE_ANON_KEY=eyJ...
 SUPABASE_JWT_SECRET=your-jwt-secret
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_ENABLED=true
 
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
@@ -90,7 +91,16 @@ NEXT_PUBLIC_SUPABASE_ENABLED=false
 
 The web app skips login; `POST /patients` creates anonymous records.
 
-## 8. Verify auth E2E
+## 8. Admin: register doctors
+
+1. Set **`SUPABASE_SERVICE_ROLE_KEY`** in `apps/api/.env` (Dashboard → Project Settings → API → `service_role` secret — **never** expose in the web app).
+2. Grant yourself admin once in Supabase → Authentication → Users → Raw App Meta Data: `{"role": "admin"}`.
+3. Sign in as admin → **`/admin/doctors`** → enter mobile, name, specialty → **Grant doctor access**.
+4. Doctor signs in at **`/doctor/login`** with that number.
+
+Revoke sets the Supabase role back to `patient` and removes the provider row.
+
+## 9. Verify auth E2E
 
 1. Open web → `/login` → enter phone → OTP.
 2. Complete `/onboarding` (language).

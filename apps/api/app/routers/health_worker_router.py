@@ -148,10 +148,10 @@ async def proxy_upload(
 ) -> dict:
     await ingestion.require_consent(db, patient.id)
 
-    storage_path, mime, guessed_type, original_hash = await ingestion.store_upload(file)
+    storage_path, mime, guessed_type, original_hash, enc_key = await ingestion.store_upload(file)
     resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else guessed_type
     doc = await ingestion.create_document(
-        db, patient.id, storage_path, mime, resolved_type, original_hash
+        db, patient.id, storage_path, mime, resolved_type, original_hash, enc_key
     )
     await log_access(
         db,

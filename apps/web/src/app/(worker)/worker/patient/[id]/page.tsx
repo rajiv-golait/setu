@@ -39,6 +39,9 @@ export default function WorkerPatientPage() {
         <Link href={`/triage?patient_id=${id}`}>
           <SecondaryButton>Run symptom check</SecondaryButton>
         </Link>
+        <Link href={`/doctors`}>
+          <SecondaryButton>Find a doctor</SecondaryButton>
+        </Link>
         <Link href={`/appointments/new?patient_id=${id}`}>
           <SecondaryButton>Schedule consultation</SecondaryButton>
         </Link>

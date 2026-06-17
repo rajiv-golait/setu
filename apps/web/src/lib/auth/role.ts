@@ -23,6 +23,7 @@ export function homeForRole(role: UserRole): string {
 }
 
 export function isRoleAllowedOnPath(role: UserRole, pathname: string): boolean {
+  if (pathname.startsWith("/doctor/login")) return true;
   if (pathname.startsWith("/doctor")) return role === "provider" || role === "admin";
   if (pathname.startsWith("/worker")) return role === "health_worker" || role === "admin";
   if (pathname.startsWith("/admin")) return role === "admin";

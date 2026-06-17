@@ -1,7 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/onboarding", "/brief/", "/share/"];
+const PUBLIC_PREFIXES = ["/login", "/doctor/login", "/doctor/pending", "/onboarding", "/brief/", "/share/"];
+
+function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
+function isDoctorAppPath(pathname: string): boolean {
+  return pathname.startsWith("/doctor") && !pathname.startsWith("/doctor/login");
+}
 
 type UserRole = "patient" | "provider" | "health_worker" | "admin";
 
@@ -25,9 +33,6 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   if (pathname.startsWith("/api/v1")) {
-    return NextResponse.next();
-  }
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
 
@@ -58,62 +63,63 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && pathname !== "/login") {
+  if (!user) {
+    if (isPublicPath(pathname)) {
+      return response;
+    }
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    loginUrl.pathname = isDoctorAppPath(pathname) ? "/doctor/login" : "/login";
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user) {
-    const role = roleFromMeta(user.app_metadata as Record<string, unknown> | undefined);
+  const role = roleFromMeta(user.app_metadata as Record<string, unknown> | undefined);
 
-    if (pathname === "/login") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = homeForRole(role);
-      return NextResponse.redirect(dest);
-    }
+  if (pathname === "/login" || pathname === "/doctor/login") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = homeForRole(role);
+    return NextResponse.redirect(dest);
+  }
 
-    if (pathname.startsWith("/doctor") && role !== "provider" && role !== "admin") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = homeForRole(role);
-      return NextResponse.redirect(dest);
-    }
-    if (pathname.startsWith("/worker") && role !== "health_worker" && role !== "admin") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = homeForRole(role);
-      return NextResponse.redirect(dest);
-    }
-    if (pathname.startsWith("/admin") && role !== "admin") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = homeForRole(role);
-      return NextResponse.redirect(dest);
-    }
-    if (
-      role === "provider" &&
-      !pathname.startsWith("/doctor") &&
-      !pathname.startsWith("/brief/") &&
-      !pathname.startsWith("/share/")
-    ) {
-      const dest = request.nextUrl.clone();
-      dest.pathname = "/doctor";
-      return NextResponse.redirect(dest);
-    }
-    if (
-      role === "health_worker" &&
-      !pathname.startsWith("/worker") &&
-      !pathname.startsWith("/brief/") &&
-      !pathname.startsWith("/share/")
-    ) {
-      const dest = request.nextUrl.clone();
-      dest.pathname = "/worker";
-      return NextResponse.redirect(dest);
-    }
-    if (role === "admin" && pathname === "/") {
-      const dest = request.nextUrl.clone();
-      dest.pathname = "/admin";
-      return NextResponse.redirect(dest);
-    }
+  if (isDoctorAppPath(pathname) && role !== "provider" && role !== "admin") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = homeForRole(role);
+    return NextResponse.redirect(dest);
+  }
+  if (pathname.startsWith("/worker") && role !== "health_worker" && role !== "admin") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = homeForRole(role);
+    return NextResponse.redirect(dest);
+  }
+  if (pathname.startsWith("/admin") && role !== "admin") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = homeForRole(role);
+    return NextResponse.redirect(dest);
+  }
+  if (
+    role === "provider" &&
+    !pathname.startsWith("/doctor") &&
+    !pathname.startsWith("/brief/") &&
+    !pathname.startsWith("/share/")
+  ) {
+    const dest = request.nextUrl.clone();
+    dest.pathname = "/doctor";
+    return NextResponse.redirect(dest);
+  }
+  if (
+    role === "health_worker" &&
+    !pathname.startsWith("/worker") &&
+    !pathname.startsWith("/brief/") &&
+    !pathname.startsWith("/share/")
+  ) {
+    const dest = request.nextUrl.clone();
+    dest.pathname = "/worker";
+    return NextResponse.redirect(dest);
+  }
+  if (role === "admin" && pathname === "/") {
+    const dest = request.nextUrl.clone();
+    dest.pathname = "/admin";
+    return NextResponse.redirect(dest);
   }
 
   return response;

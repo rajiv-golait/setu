@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import verify_supabase_role, verify_supabase_token
 from app.config import settings
-from app.db.models import HealthWorker, Patient, Provider
+from app.db.models import Appointment, HealthWorker, Patient, Provider, ProviderAccessGrant
 from app.db.session import get_db
 from app.errors import FORBIDDEN, NOT_FOUND, UNAUTHORIZED, VALIDATION_ERROR, AppError, not_found
 from app.ids import new_id
@@ -120,11 +120,78 @@ async def require_provider(
     role: str = Depends(get_user_role),
     db: AsyncSession = Depends(get_db),
 ) -> Provider:
-    """Require the 'provider' role and return the Provider row, auto-provisioning
-    it on first call (same pattern as patient GET /me)."""
-    if role != "provider":
+    """Require the 'provider' role and return the Provider row."""
+    if role not in ("provider", "admin"):
         raise AppError(FORBIDDEN, "Provider role required", retryable=False)
+    if role == "admin":
+        # Admins may act as providers in tests; return or create a stub provider row.
+        row = (
+            await db.execute(select(Provider).where(Provider.supabase_user_id == auth_user_id))
+        ).scalar_one_or_none()
+        if row is None:
+            row = Provider(
+                id=new_id("prv"),
+                supabase_user_id=auth_user_id,
+                verification_status="approved",
+            )
+            db.add(row)
+            await db.commit()
+            await db.refresh(row)
+        return row
     return await get_or_create_provider(db, auth_user_id)
+
+
+async def require_approved_provider(
+    provider: Provider = Depends(require_provider),
+) -> Provider:
+    """Block unverified doctors from clinical actions."""
+    if provider.verification_status not in ("approved",):
+        raise AppError(
+            FORBIDDEN,
+            "Provider account is not verified yet",
+            details={"verification_status": provider.verification_status},
+            retryable=False,
+        )
+    return provider
+
+
+async def require_provider_patient_access(
+    patient_id: str,
+    provider: Provider = Depends(require_approved_provider),
+    db: AsyncSession = Depends(get_db),
+) -> Patient:
+    """Provider may read patient data when an active grant or appointment exists."""
+    patient = (
+        await db.execute(select(Patient).where(Patient.id == patient_id))
+    ).scalar_one_or_none()
+    if patient is None:
+        raise not_found("Patient", patient_id)
+
+    grant = (
+        await db.execute(
+            select(ProviderAccessGrant).where(
+                ProviderAccessGrant.provider_id == provider.id,
+                ProviderAccessGrant.patient_id == patient_id,
+            )
+        )
+    ).scalar_one_or_none()
+    appt = (
+        await db.execute(
+            select(Appointment).where(
+                Appointment.provider_id == provider.id,
+                Appointment.patient_id == patient_id,
+                Appointment.status.in_(("accepted", "confirmed", "completed")),
+            )
+        )
+    ).scalar_one_or_none()
+    if grant is None and appt is None:
+        raise AppError(
+            FORBIDDEN,
+            "No access grant for this patient",
+            details={"patient_id": patient_id},
+            retryable=False,
+        )
+    return patient
 
 
 async def get_or_create_provider(db: AsyncSession, auth_user_id: str) -> Provider:
@@ -132,7 +199,12 @@ async def get_or_create_provider(db: AsyncSession, auth_user_id: str) -> Provide
         await db.execute(select(Provider).where(Provider.supabase_user_id == auth_user_id))
     ).scalar_one_or_none()
     if provider is None:
-        provider = Provider(id=new_id("prv"), supabase_user_id=auth_user_id)
+        status = "approved" if not settings.SUPABASE_ENABLED or settings.DEMO_MODE else "pending"
+        provider = Provider(
+            id=new_id("prv"),
+            supabase_user_id=auth_user_id,
+            verification_status=status,
+        )
         db.add(provider)
         await db.commit()
         await db.refresh(provider)

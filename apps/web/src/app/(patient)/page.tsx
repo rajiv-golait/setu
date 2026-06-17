@@ -10,9 +10,17 @@ import { EmptyDocuments } from "@/components/ui/state-panel";
 import { OfflineQueueBanner } from "@/components/ui/offline-queue-banner";
 import { ConnectionBadge } from "@/components/ui/connection-badge";
 import { hasLocalConsent } from "@/lib/consent";
-import { listDocuments, getReminders } from "@/lib/api";
+import { listDocuments, getReminders, getPatientProfile, getPatientTimeline } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
-import type { DocumentListItem, ReminderSchedule } from "@/lib/types";
+import type { DocumentListItem, ReminderSchedule, TimelineEvent } from "@/lib/types";
+import type { PatientProfile } from "@/lib/types";
+
+function profileCompletion(p: PatientProfile | null): number {
+  if (!p) return 0;
+  const fields = [p.date_of_birth, p.gender, p.blood_group, p.district, p.state];
+  const filled = fields.filter(Boolean).length;
+  return Math.round((filled / fields.length) * 100);
+}
 
 function docTitle(doc: DocumentListItem): string {
   const raw = doc.doc_type?.replace(/_/g, " ") ?? "Document";
@@ -52,6 +60,8 @@ export default function HomePage() {
   const [docsLoading, setDocsLoading] = useState(false);
   const [consentOk, setConsentOk] = useState(false);
   const [reminders, setReminders] = useState<ReminderSchedule | null>(null);
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
 
   useEffect(() => {
     if (patient?.id && hasLocalConsent(patient.id)) setConsentOk(true);
@@ -67,9 +77,16 @@ export default function HomePage() {
     getReminders(patient.id)
       .then(setReminders)
       .catch(() => setReminders(null));
+    getPatientProfile()
+      .then(setProfile)
+      .catch(() => setProfile(null));
+    getPatientTimeline(patient.id)
+      .then((events) => setTimeline(events.slice(0, 3)))
+      .catch(() => setTimeline([]));
   }, [patient?.id, ready]);
 
   const greetingName = patient?.displayName?.split(" ")[0] ?? "there";
+  const profilePct = profileCompletion(profile);
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -95,6 +112,33 @@ export default function HomePage() {
           {greetingName.slice(0, 2).toUpperCase()}
         </div>
       </div>
+
+      {profilePct < 100 && (
+        <Link
+          href="/profile"
+          className="mb-6 block rounded-card border border-border bg-surface-raised p-4 shadow-card"
+        >
+          <p className="text-sm font-semibold">Complete your health profile</p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-border">
+            <div className="h-full bg-primary" style={{ width: `${profilePct}%` }} />
+          </div>
+          <p className="mt-1 text-xs text-text-muted">{profilePct}% complete — tap to update</p>
+        </Link>
+      )}
+
+      {timeline.length > 0 && (
+        <div className="mb-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+          <h2 className="text-sm font-semibold">Recent activity</h2>
+          <ul className="mt-2 space-y-1.5 text-sm text-text-muted">
+            {timeline.map((e, i) => (
+              <li key={`${e.at}-${i}`}>· {e.title}</li>
+            ))}
+          </ul>
+          <Link href="/timeline" className="mt-2 inline-block text-xs font-semibold text-primary">
+            Full timeline →
+          </Link>
+        </div>
+      )}
 
       <div className="rounded-hero border border-border bg-surface-raised p-5 shadow-raised">
         {patient?.id && !consentOk ? (

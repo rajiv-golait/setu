@@ -3,18 +3,25 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppointmentCard } from "@/components/appointments/appointment-card";
-import { getProviderMe, listAppointments } from "@/lib/api";
-import type { Appointment, ProviderRecord } from "@/lib/types";
+import { getProviderMe, getProviderDashboard, listAppointments } from "@/lib/api";
+import type { Appointment, ProviderDashboard, ProviderRecord } from "@/lib/types";
 
 export default function DoctorDashboard() {
   const [provider, setProvider] = useState<ProviderRecord | null>(null);
+  const [dash, setDash] = useState<ProviderDashboard | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     getProviderMe()
-      .then(setProvider)
+      .then((p) => {
+        setProvider(p);
+        if (p.verification_status && p.verification_status !== "approved") {
+          window.location.href = "/doctor/pending";
+        }
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Not a provider"));
+    getProviderDashboard().then(setDash).catch(() => setDash(null));
     listAppointments("requested")
       .then(setAppointments)
       .catch(() => setAppointments([]));
@@ -35,21 +42,33 @@ export default function DoctorDashboard() {
       )}
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      {provider?.verification_status && provider.verification_status !== "approved" && (
+        <div className="mt-4 rounded-card border border-warning-border bg-warning-bg p-4 text-sm">
+          Account status: <span className="font-semibold capitalize">{provider.verification_status}</span>.
+          Complete onboarding or wait for admin approval.
+          <Link href="/doctor/onboarding" className="ml-1 font-semibold text-primary">
+            Onboarding →
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-card border border-border bg-surface-raised p-4">
-          <p className="text-2xl font-bold text-primary">{requested.length}</p>
+          <p className="text-2xl font-bold text-primary">{dash?.pending_requests ?? requested.length}</p>
           <p className="text-sm text-text-muted">Pending requests</p>
         </div>
         <div className="rounded-card border border-border bg-surface-raised p-4">
-          <p className="text-2xl font-bold text-warning">{reviewSoon.length}</p>
-          <p className="text-sm text-text-muted">Triage-linked</p>
+          <p className="text-2xl font-bold text-primary">{dash?.today_appointments ?? 0}</p>
+          <p className="text-sm text-text-muted">Today</p>
         </div>
-        <Link
-          href="/doctor/appointments"
-          className="rounded-card border border-primary/30 bg-[#EEF4F0] p-4"
-        >
-          <p className="font-semibold text-primary">All appointments →</p>
-        </Link>
+        <div className="rounded-card border border-border bg-surface-raised p-4">
+          <p className="text-2xl font-bold text-success">{dash?.completed_this_week ?? 0}</p>
+          <p className="text-sm text-text-muted">Completed this week</p>
+        </div>
+        <div className="rounded-card border border-border bg-surface-raised p-4">
+          <p className="text-2xl font-bold text-warning">{dash?.follow_ups_due ?? reviewSoon.length}</p>
+          <p className="text-sm text-text-muted">Follow-ups due</p>
+        </div>
       </div>
 
       <h2 className="mb-3 mt-8 text-sm font-semibold uppercase text-text-muted">

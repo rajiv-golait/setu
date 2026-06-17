@@ -53,12 +53,24 @@ ALLOWED_TRANSITIONS: dict[str, dict] = {
         "from": {AppointmentStatus.requested, AppointmentStatus.accepted, AppointmentStatus.confirmed},
         "roles": {"patient", "provider"},
     },
+    "no_show": {
+        "to": AppointmentStatus.cancelled,
+        "from": {AppointmentStatus.confirmed, AppointmentStatus.accepted},
+        "roles": {"provider"},
+    },
+    "reschedule": {
+        "to": AppointmentStatus.requested,
+        "from": {AppointmentStatus.accepted, AppointmentStatus.confirmed},
+        "roles": {"patient", "provider"},
+    },
 }
 
 
 class AppointmentCreate(BaseModel):
     patient_id: str
     specialty: str
+    provider_id: str | None = None
+    slot_id: str | None = None
     scheduled_for: datetime | None = None
     referral_id: str | None = None
     triage_id: str | None = None
@@ -67,6 +79,9 @@ class AppointmentCreate(BaseModel):
 
 class AppointmentPatch(BaseModel):
     action: str  # one of ALLOWED_TRANSITIONS keys
+    reason: str | None = None
+    new_slot_id: str | None = None
+    follow_up_date: str | None = None
 
 
 class AppointmentDTO(BaseModel):

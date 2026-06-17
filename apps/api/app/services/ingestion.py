@@ -1,11 +1,8 @@
-"""Ingestion: validate upload, store file to disk, create document + job rows.
-
-Storage is a local volume (STORAGE_PATH). S3 is intentionally out of scope for MVP.
-"""
+"""Ingestion: validate upload, store via pluggable backend, create document row."""
 from __future__ import annotations
 
 import hashlib
-import os
+from pathlib import Path
 
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +11,7 @@ from app.config import settings
 from app.db.models import Document
 from app.errors import CONSENT_REQUIRED, VALIDATION_ERROR, AppError
 from app.ids import new_id
+from app.services.storage import get_storage
 
 _CONSENT_PURPOSE = "document_processing"
 
@@ -50,7 +48,7 @@ async def require_consent(db: AsyncSession, patient_id: str) -> None:
         )
 
 
-async def store_upload(file: UploadFile) -> tuple[str, str, str, str]:
+async def store_upload(file: UploadFile) -> tuple[str, str, str, str, str | None]:
     """Validate + persist the uploaded file.
 
     Returns (storage_path, mime, doc_type, original_hash). The hash is a
@@ -71,12 +69,10 @@ async def store_upload(file: UploadFile) -> tuple[str, str, str, str]:
         )
 
     original_hash = hashlib.sha256(data).hexdigest()
-    os.makedirs(settings.STORAGE_PATH, exist_ok=True)
     doc_id = new_id("doc")
-    path = os.path.join(settings.STORAGE_PATH, f"{doc_id}{_EXT.get(mime, '')}")
-    with open(path, "wb") as f:
-        f.write(data)
-    return path, mime, _guess_doc_type(mime), original_hash
+    storage = get_storage()
+    path, key_id = storage.put(data, mime=mime, doc_id=doc_id)
+    return path, mime, _guess_doc_type(mime), original_hash, key_id
 
 
 async def create_document(
@@ -86,12 +82,14 @@ async def create_document(
     mime: str,
     doc_type: str,
     original_hash: str | None = None,
+    encryption_key_id: str | None = None,
 ) -> Document:
     doc = Document(
         id=storage_path_to_id(storage_path),
         patient_id=patient_id,
         doc_type=doc_type,
         storage_path=storage_path,
+        encryption_key_id=encryption_key_id,
         mime=mime,
         source="upload",
         status="pending",
@@ -104,5 +102,5 @@ async def create_document(
 
 def storage_path_to_id(storage_path: str) -> str:
     """The document id is the filename stem chosen in store_upload."""
-    base = os.path.basename(storage_path)
-    return os.path.splitext(base)[0]
+    base = Path(storage_path).name
+    return Path(base).stem

@@ -11,6 +11,7 @@ here so it cannot misbehave half-built.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Patient, Provider
@@ -80,6 +81,8 @@ async def create_appointment(
             triage_id=body.triage_id,
             notes=body.notes,
             booked_by=patient.id,
+            provider_id=body.provider_id,
+            slot_id=body.slot_id,
         )
     elif role == "health_worker":
         from app.deps import get_or_create_health_worker, require_worker_patient_link
@@ -95,6 +98,8 @@ async def create_appointment(
             triage_id=body.triage_id,
             notes=body.notes,
             booked_by=worker.id,
+            provider_id=body.provider_id,
+            slot_id=body.slot_id,
         )
     else:
         raise AppError(FORBIDDEN, f"Role {role!r} may not book appointments", retryable=False)
@@ -127,6 +132,61 @@ async def list_appointments(
     return [await _dto(db, a) for a in rows]
 
 
+@router.get("/appointments/{appointment_id}", response_model=AppointmentDTO)
+async def get_appointment(
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    role: str = Depends(get_user_role),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> AppointmentDTO:
+    appt = await svc.get(db, appointment_id)
+    provider: Provider | None = None
+    actor_id = auth_user_id or ""
+    if role == "provider":
+        provider = await get_or_create_provider(db, auth_user_id)
+        actor_id = provider.id
+    elif role == "patient":
+        patient = await _resolve_patient(db, auth_user_id)
+        actor_id = patient.id if patient else (auth_user_id or "")
+    elif role == "health_worker":
+        from app.deps import get_or_create_health_worker
+
+        worker = await get_or_create_health_worker(db, auth_user_id)
+        actor_id = worker.id
+    await svc.assert_can_view(db, appt, role=role, actor_id=actor_id, provider=provider)
+    return await _dto(db, appt)
+
+
+@router.get("/appointments/{appointment_id}/visit-summary")
+async def appointment_visit_summary(
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    role: str = Depends(get_user_role),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+):
+    from app.db.models import Encounter
+    from app.routers.encounters_router import EncounterSummaryDTO, _build_summary
+
+    appt = await svc.get(db, appointment_id)
+    provider: Provider | None = None
+    actor_id = auth_user_id or ""
+    if role == "provider":
+        provider = await get_or_create_provider(db, auth_user_id)
+        actor_id = provider.id
+    elif role == "patient":
+        patient = await _resolve_patient(db, auth_user_id)
+        actor_id = patient.id if patient else (auth_user_id or "")
+    await svc.assert_can_view(db, appt, role=role, actor_id=actor_id, provider=provider)
+    enc = (
+        await db.execute(select(Encounter).where(Encounter.appointment_id == appointment_id))
+    ).scalar_one_or_none()
+    if enc is None:
+        from app.errors import not_found as nf
+
+        raise nf("Encounter", appointment_id)
+    return await _build_summary(db, enc)
+
+
 @router.patch("/appointments/{appointment_id}", response_model=AppointmentDTO)
 async def patch_appointment(
     appointment_id: str,
@@ -146,9 +206,24 @@ async def patch_appointment(
         is_owner = patient is not None and patient.id == appt.patient_id
 
     appt = await svc.transition(
-        db, appt, body.action, actor_role=role, is_owner=is_owner, provider=provider
+        db, appt, body.action, actor_role=role, is_owner=is_owner, provider=provider,
+        reason=body.reason, new_slot_id=body.new_slot_id,
     )
     return await _dto(db, appt)
+
+
+@router.post("/appointments/{appointment_id}/video-joined")
+async def appointment_video_joined(
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    role: str = Depends(get_user_role),
+) -> dict:
+    from app.services import encounters as enc_svc
+
+    await svc.get(db, appointment_id)
+    await enc_svc.record_video_join(db, appointment_id, role=role)
+    await db.commit()
+    return {"ok": True}
 
 
 async def _resolve_patient(db: AsyncSession, auth_user_id: str | None) -> Patient | None:

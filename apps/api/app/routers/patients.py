@@ -6,13 +6,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.models import AccessLog, Patient
+from app.db.models import AccessLog, Patient, PatientProfile
 from app.db.session import get_db
 from app.deps import require_auth_user_id, require_patient_access
 from app.errors import FORBIDDEN, AppError, not_found
 from app.ids import new_id, new_token
 from app.schemas.access_log import AccessLogDTO
 from app.schemas.common import PatientCreateRequest, PatientDTO, PatientUpdateRequest
+from app.schemas.patient_profile import PatientProfileDTO, PatientProfileUpdate
 from app.services import retention
 
 router = APIRouter(prefix="/patients", tags=["patients"])
@@ -134,3 +135,68 @@ async def list_access_log(
         )
         for r in rows
     ]
+
+
+def _profile_dto(row: PatientProfile) -> PatientProfileDTO:
+    return PatientProfileDTO(
+        patient_id=row.patient_id,
+        date_of_birth=row.date_of_birth,
+        gender=row.gender,
+        blood_group=row.blood_group,
+        allergies_known=row.allergies_known,
+        chronic_conditions=row.chronic_conditions,
+        emergency_contact=row.emergency_contact,
+        district=row.district,
+        state=row.state,
+        updated_at=row.updated_at,
+    )
+
+
+@router.get("/me/profile", response_model=PatientProfileDTO)
+async def get_my_profile(
+    auth_user_id: str = Depends(require_auth_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> PatientProfileDTO:
+    patient = (
+        await db.execute(select(Patient).where(Patient.supabase_user_id == auth_user_id))
+    ).scalar_one_or_none()
+    if patient is None:
+        raise not_found("Patient", auth_user_id)
+    row = (
+        await db.execute(select(PatientProfile).where(PatientProfile.patient_id == patient.id))
+    ).scalar_one_or_none()
+    if row is None:
+        row = PatientProfile(patient_id=patient.id)
+        db.add(row)
+        await db.commit()
+        await db.refresh(row)
+    return _profile_dto(row)
+
+
+@router.patch("/me/profile", response_model=PatientProfileDTO)
+async def update_my_profile(
+    body: PatientProfileUpdate,
+    auth_user_id: str = Depends(require_auth_user_id),
+    db: AsyncSession = Depends(get_db),
+) -> PatientProfileDTO:
+    from datetime import datetime, timezone
+
+    patient = (
+        await db.execute(select(Patient).where(Patient.supabase_user_id == auth_user_id))
+    ).scalar_one_or_none()
+    if patient is None:
+        raise not_found("Patient", auth_user_id)
+    row = (
+        await db.execute(select(PatientProfile).where(PatientProfile.patient_id == patient.id))
+    ).scalar_one_or_none()
+    if row is None:
+        row = PatientProfile(patient_id=patient.id)
+        db.add(row)
+    for field in body.model_fields:
+        val = getattr(body, field, None)
+        if val is not None:
+            setattr(row, field, val)
+    row.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(row)
+    return _profile_dto(row)

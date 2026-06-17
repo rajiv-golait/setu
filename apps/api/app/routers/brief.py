@@ -4,18 +4,19 @@ DEMO_MODE: GET returns the cached seed brief instantly, no pipeline.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
-from app.deps import require_patient_access
+from app.deps import get_auth_user_id, get_user_role, require_patient_access
 from app.errors import NOT_FOUND, AppError
 from app.schemas.brief import DoctorBriefDTO
 from app.schemas.exports import EsanjeewaniExportDTO, FhirExportDTO
 from app.services import persistence
+from app.services.audit_phi import audit_phi_read
 from app.services.brief import build_brief
 from app.services.esanjeewani_export import brief_to_esanjeewani_text
 from app.services.fhir_export import brief_to_fhir_bundle
@@ -28,8 +29,11 @@ router = APIRouter(prefix="/patients", tags=["brief"])
 
 @router.get("/{patient_id}/brief", response_model=DoctorBriefDTO)
 async def get_brief(
+    request: Request,
     patient: Patient = Depends(require_patient_access),
     db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+    role: str = Depends(get_user_role),
 ) -> DoctorBriefDTO:
     patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
     if settings.DEMO_MODE:
@@ -44,6 +48,15 @@ async def get_brief(
     brief = await persistence.latest_brief(db, patient_id)
     if brief is None:
         raise AppError(NOT_FOUND, "No brief generated yet", details={"patient_id": patient_id}, retryable=False)
+    await audit_phi_read(
+        db,
+        patient_id=patient_id,
+        resource="brief",
+        actor_id=auth_user_id,
+        actor_role=role,
+        request=request,
+    )
+    await db.commit()
     return brief
 
 
