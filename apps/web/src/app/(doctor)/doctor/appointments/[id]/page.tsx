@@ -7,7 +7,9 @@ import { DoctorShell } from "@/components/layout/role-shells";
 import { CancelDialog } from "@/components/appointments/cancel-dialog";
 import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
 import { VideoConsult } from "@/components/doctor/video-consult";
+import { PatientContextPanel } from "@/components/PatientContextPanel";
 import { getAppointment, listEncountersForPatient, patchAppointment } from "@/lib/api";
+import { API_BASE } from "@/lib/constants";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
@@ -16,21 +18,26 @@ export default function DoctorAppointmentDetailPage() {
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [encounterId, setEncounterId] = useState<string | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
+  const [patientContext, setPatientContext] = useState<{ brief?: unknown; current_truth?: unknown } | null>(null);
 
   const refresh = () => {
-    getAppointment(id)
-      .then((found) => {
-        setAppt(found);
-        if (found?.patient_id) {
-          listEncountersForPatient(found.patient_id)
-            .then((encs) => {
-              const match = encs.find((e) => e.appointment_id === id);
-              if (match) setEncounterId(match.id);
-            })
-            .catch(() => undefined);
-        }
-      })
-      .catch(() => setAppt(null));
+    const apptP = getAppointment(id);
+    const ctxP = fetch(`${API_BASE}/appointments/${id}/patient-context`)
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+
+    Promise.all([apptP, ctxP]).then(([found, ctx]) => {
+      setAppt(found ?? null);
+      setPatientContext(ctx);
+      if (found?.patient_id) {
+        listEncountersForPatient(found.patient_id)
+          .then((encs) => {
+            const match = encs.find((e) => e.appointment_id === id);
+            if (match) setEncounterId(match.id);
+          })
+          .catch(() => undefined);
+      }
+    }).catch(() => setAppt(null));
   };
 
   useEffect(() => {
@@ -85,6 +92,18 @@ export default function DoctorAppointmentDetailPage() {
             >
               Open consultation notes →
             </Link>
+          )}
+
+          {patientContext && (
+            <div className="mt-6">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-light">
+                Patient Context
+              </p>
+              <PatientContextPanel
+                brief={patientContext.brief as Parameters<typeof PatientContextPanel>[0]["brief"]}
+                currentTruth={patientContext.current_truth as Parameters<typeof PatientContextPanel>[0]["currentTruth"]}
+              />
+            </div>
           )}
 
           {["accepted", "confirmed"].includes(appt.status) && (

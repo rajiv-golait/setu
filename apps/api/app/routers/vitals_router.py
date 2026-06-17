@@ -64,7 +64,7 @@ async def create_vital(
     db: AsyncSession = Depends(get_db),
 ) -> VitalDTO:
     patient, source = access
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     recorded_by = body.source or source
     row = await svc.record(
         db,
@@ -87,7 +87,7 @@ async def list_patient_vitals(
     db: AsyncSession = Depends(get_db),
 ) -> list[VitalDTO]:
     patient, source = access
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     rows = await svc.list_vitals(db, patient_id, vital_type)
     return [_to_dto(r, source=r.recorded_by or source) for r in rows]
 
@@ -98,7 +98,7 @@ async def vitals_summary(
     db: AsyncSession = Depends(get_db),
 ) -> VitalsSummaryDTO:
     patient, source = access
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     latest: dict[str, VitalDTO] = {}
     trends: dict[str, str] = {}
     for vt in ("blood_pressure", "blood_sugar", "spo2", "heart_rate"):

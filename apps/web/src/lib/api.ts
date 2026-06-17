@@ -186,6 +186,19 @@ export async function getJob(jobId: string): Promise<JobStatus> {
   return request<JobStatus>(`/jobs/${jobId}`);
 }
 
+export async function saathiChat(
+  patientId: string,
+  message: string,
+  history: { role: string; content: string }[],
+  lang = "mr",
+): Promise<{ reply: string; action: string; safe: boolean }> {
+  return request(`/patients/${patientId}/saathi`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message, history, lang }),
+  });
+}
+
 export async function uploadDocument(
   patientId: string,
   file: File,

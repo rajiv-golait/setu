@@ -1,4 +1,4 @@
-"""Cloud reasoner — Gemini 3.5 Flash (google-genai >= 2.0.0).
+"""Cloud reasoner — Gemini Flash quality-first chain (google-genai >= 2.0.0).
 
 Generates (1) the Marathi/Hindi/English caregiver explanation and (2) the
 doctor-facing brief JSON. Free-text explanation does NOT use JSON output mode;
@@ -16,21 +16,17 @@ from __future__ import annotations
 import json
 import logging
 
-from app.config import settings
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
+from app.services.gemini_client import generate_content_with_fallback
+from app.services.gemini_models import GEMINI_DEFAULT_MODEL
 from app.services.reasoning.base import ReasonerProvider
-from app.services.reasoning.mock import MockReasoner
+from app.services.safety import DISCLAIMER, append_disclaimer
 
 logger = logging.getLogger("setu.gemini")
 
-GEMINI_MODEL = "gemini-3.5-flash"
+GEMINI_MODEL = GEMINI_DEFAULT_MODEL
 
 _LANG_NAME = {"mr": "Marathi", "hi": "Hindi", "en": "English"}
-_DISCLAIMER = {
-    "mr": "हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही. डॉक्टरांशी बोला.",
-    "hi": "यह आपके दस्तावेज़ का स्पष्टीकरण है, चिकित्सीय सलाह नहीं। डॉक्टर से बात करें।",
-    "en": "This is an explanation of your document, not medical advice. Please speak with your doctor.",
-}
 
 
 def _format_truth_for_prompt(current_truth: CurrentTruthDTO) -> str:
@@ -84,10 +80,7 @@ def _format_truth_for_prompt(current_truth: CurrentTruthDTO) -> str:
 
 
 class GeminiReasonerProvider(ReasonerProvider):
-    name = "gemini-3.5-flash"
-
-    def __init__(self) -> None:
-        self._fallback = MockReasoner()
+    name = "gemini-flash"
 
     def _client(self):  # noqa: ANN202 — lazy SDK import
         from google import genai
@@ -99,14 +92,13 @@ class GeminiReasonerProvider(ReasonerProvider):
     ) -> str:
         truth_summary = _format_truth_for_prompt(current_truth)
         lang_name = _LANG_NAME.get(lang, "Marathi")
-        disclaimer = _DISCLAIMER.get(lang, _DISCLAIMER["mr"])
 
         prompt = f"""You are a medical assistant explaining a health document to a \
 family caregiver in {lang_name}. Be clear, warm, and simple — no jargon.
 
 STRICT RULES (violation = your output is rejected and retried):
 1. Never suggest starting, stopping, or changing any dose.
-2. The LAST sentence must be exactly: "{disclaimer}"
+2. Do NOT include any disclaimer or safety note — it is appended automatically by the system.
 3. Only describe what is in the extracted data below — nothing else.
 4. If a value looks uncertain, say it may need to be checked against the original.
 5. Write 3-5 sentences total. Plain language only.
@@ -115,12 +107,10 @@ Patient data:
 {truth_summary}
 """
         try:
-            # Lazy import INSIDE the try so a missing/broken SDK routes to the
-            # deterministic mock fallback like any other cloud failure.
             from google.genai import types
 
-            response = await self._client().aio.models.generate_content(
-                model=GEMINI_MODEL,
+            response, _model = await generate_content_with_fallback(
+                self._client(),
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     thinking_config=types.ThinkingConfig(thinking_level="low"),
@@ -129,15 +119,10 @@ Patient data:
             explanation = (response.text or "").strip()
         except Exception as exc:  # noqa: BLE001
             logger.warning("gemini explanation failed (%s)", exc)
-            if settings.DEMO_MODE:
-                logger.warning("using mock fallback (DEMO_MODE)")
-                return await self._fallback.generate_explanation(current_truth, lang, doc_type)
             raise
 
-        # Safety enforcement in code — never trust the model alone.
-        if disclaimer not in explanation:
-            explanation = explanation.rstrip(".") + "\n" + disclaimer
-        return explanation
+        # Disclaimer always appended by code — deterministic, never duplicated.
+        return append_disclaimer(explanation, lang)
 
     async def generate_brief(self, current_truth: CurrentTruthDTO) -> dict:
         truth_summary = _format_truth_for_prompt(current_truth)
@@ -166,8 +151,8 @@ Patient data:
         try:
             from google.genai import types
 
-            response = await self._client().aio.models.generate_content(
-                model=GEMINI_MODEL,
+            response, _model = await generate_content_with_fallback(
+                self._client(),
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     thinking_config=types.ThinkingConfig(thinking_level="medium"),
@@ -181,11 +166,9 @@ Patient data:
             return content
         except Exception as exc:  # noqa: BLE001
             logger.warning("gemini brief failed (%s)", exc)
-            if settings.DEMO_MODE:
-                logger.warning("using mock fallback (DEMO_MODE)")
-                return await self._fallback.generate_brief(current_truth)
             raise
 
     async def generate_summary(self, current_truth: CurrentTruthDTO, brief: dict, lang: str) -> dict:
         # Patient summary is no longer in the pipeline; ABC still requires it.
-        return await self._fallback.generate_summary(current_truth, brief, lang)
+        from app.services.reasoning.mock import MockReasoner
+        return await MockReasoner().generate_summary(current_truth, brief, lang)

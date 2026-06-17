@@ -15,6 +15,7 @@ The job opens its OWN db session (it runs after the request returns).
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -74,8 +75,30 @@ async def run_pipeline(
     If reply_chat_id is set, the explanation + brief link are sent to that
     Telegram chat once the brief is generated.
     """
-    state = await jobs_store.load(job_id) or jobs_store.new_job_state(job_id, document_id)
+    state = await jobs_store.load(job_id) or jobs_store.new_job_state(job_id, document_id, patient_id)
+    state.started_at = datetime.now(timezone.utc)
+    await jobs_store.save(state)
 
+    try:
+        await asyncio.wait_for(
+            _run_pipeline_inner(state, document_id, patient_id, reply_chat_id),
+            timeout=settings.PIPELINE_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        await _fail(
+            state,
+            state.stage or "unknown",
+            "PIPELINE_TIMEOUT",
+            "Processing timed out — please send a clearer photo and try again",
+        )
+
+
+async def _run_pipeline_inner(
+    state: JobStatusDTO,
+    document_id: str,
+    patient_id: str,
+    reply_chat_id: str | None,
+) -> None:
     async with SessionLocal() as db:
         # Resolve the document (for file path + mime).
         doc = (
@@ -143,6 +166,7 @@ async def run_pipeline(
                 document_id, explanation_text, float(claims_json.overall_confidence)
             )
             state.result["explanation"] = explanation_text
+            state.result["source"] = "live_ai"
             await _set_stage_done(state, "explanation")
         except Exception as exc:  # noqa: BLE001
             await _fail(state, "explanation", REASONING_FAILED, str(exc))
@@ -161,25 +185,34 @@ async def run_pipeline(
             await _fail(state, "brief", REASONING_FAILED, str(exc))
             return
 
-        # --- STAGE: share (tokenized brief link; failures here are non-fatal) ---
+        # --- STAGE: share (tokenized brief link; retries 3x before failing job) ---
         brief_token: str | None = None
-        try:
-            await _set_stage_start(state, "share")
-            snapshot = build_snapshot(
-                share_id="shr_pending", token="pending",
-                created_at=datetime.now(timezone.utc), expires_at=None,
-                patient_ref=_patient_ref(patient_id), brief=brief, current_truth=truth,
-            )
-            row = await persistence.create_share(
-                db, patient_id, snapshot.model_dump(mode="json"), expires_in=None
-            )
-            await db.commit()
-            brief_token = row.token
-            state.result["share_token"] = row.token
-            await _set_stage_done(state, "share")
-        except Exception as exc:  # noqa: BLE001
-            await db.rollback()
-            logger.warning("share stage failed (non-fatal): %s", exc)
+        await _set_stage_start(state, "share")
+        _share_last_exc: Exception | None = None
+        for _attempt in range(3):
+            try:
+                snapshot = build_snapshot(
+                    share_id="shr_pending", token="pending",
+                    created_at=datetime.now(timezone.utc), expires_at=None,
+                    patient_ref=_patient_ref(patient_id), brief=brief, current_truth=truth,
+                )
+                row = await persistence.create_share(
+                    db, patient_id, snapshot.model_dump(mode="json"), expires_in=None
+                )
+                await db.commit()
+                brief_token = row.token
+                state.result["share_token"] = row.token
+                await _set_stage_done(state, "share")
+                _share_last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                _share_last_exc = exc
+                await db.rollback()
+                if _attempt < 2:
+                    await asyncio.sleep(1)
+        if _share_last_exc is not None:
+            await _fail(state, "share", INTERNAL, f"share creation failed: {_share_last_exc}")
+            return
 
         # --- Telegram reply: explanation + brief link (non-fatal) ---
         if reply_chat_id:

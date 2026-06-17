@@ -116,7 +116,7 @@ async def list_access_log(
     db: AsyncSession = Depends(get_db),
     limit: int = 50,
 ) -> list[AccessLogDTO]:
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     rows = (
         await db.execute(
             select(AccessLog)

@@ -17,7 +17,7 @@ from app.schemas.brief import DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO
 from app.schemas.share import ShareSnapshotDTO
 from app.services import persistence
-from app.services.explanation import DISCLAIMER
+from app.services.safety import DISCLAIMER
 from app.services.memory.persistence import load_current_truth
 from app.services.orchestrator import run_pipeline
 

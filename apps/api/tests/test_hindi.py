@@ -12,6 +12,7 @@ from app.schemas.brief import DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
 from app.services import explanation as ex
 from app.services.reasoning.mock import MockReasoner
+from app.services.safety import DISCLAIMER
 from app.services.summary import build_summary
 
 pytestmark = pytest.mark.asyncio
@@ -32,7 +33,7 @@ def _truth() -> CurrentTruthDTO:
 
 async def test_explanation_renders_in_hindi():
     text = await ex.generate_explanation(_truth(), "hi", "lab_result", MockReasoner(), overall_confidence=0.9)
-    assert ex.DISCLAIMER["hi"] in text
+    assert DISCLAIMER["hi"] in text
     assert "तुमची" not in text  # not Marathi
     assert "Please speak with your doctor" not in text  # not English
 

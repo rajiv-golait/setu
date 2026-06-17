@@ -68,7 +68,7 @@ async def run_triage(
     db: AsyncSession = Depends(get_db),
 ) -> TriageResultDTO:
     patient, created_by = access
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     lang = patient.lang_pref or "mr"
 
     decision = assess(body.symptoms, body.age, body.existing_conditions)
@@ -98,7 +98,7 @@ async def list_triage(
     db: AsyncSession = Depends(get_db),
 ) -> list[TriageResultDTO]:
     patient, _created_by = access
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     rows = (
         await db.execute(
             select(TriageRow)

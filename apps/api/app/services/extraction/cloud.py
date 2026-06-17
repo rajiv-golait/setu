@@ -1,15 +1,7 @@
-"""Cloud extractor — Gemini 3.5 Flash (default) with an OpenAI fallback.
+"""Cloud extractor — Gemini Flash (free-tier chain) with OpenAI fallback.
 
-Gemini 3.5 Flash does OCR extraction AND structured JSON output in one call.
-Selected via CLOUD_API_PROVIDER (gemini|openai) + the matching API key. If
-unconfigured or failing, raises so the routing chain falls through to the
-seeded mock (factory.py: cloud -> mock).
-
-SDK: google-genai >= 2.0.0 (NOT the old google-generativeai package).
-  - thinking_level (string enum) replaces the old integer thinking_budget
-  - temperature is not set (not recommended for 3.x models)
-  - model string is "gemini-3.5-flash"
-  - async via client.aio.models.generate_content (never block the event loop)
+Multimodal OCR + structured JSON via generateContent. Model order is defined in
+gemini_models.GEMINI_MODEL_CHAIN (quality-first: 3.5 → 2.5 → …).
 """
 from __future__ import annotations
 
@@ -24,6 +16,8 @@ from app.config import settings
 from app.schemas.claims import ClaimsJSON
 from app.services.extraction.base import ExtractorProvider
 from app.services.extraction.qwen import EXTRACTION_PROMPT, _coerce_claims
+from app.services.gemini_client import generate_content_with_fallback, is_quota_exhausted
+from app.services.gemini_models import GEMINI_DEFAULT_MODEL
 
 logger = logging.getLogger("setu.cloud")
 
@@ -36,7 +30,7 @@ class ExtractionError(RuntimeError):
         self.retryable = retryable
 
 
-GEMINI_MODEL = "gemini-3.5-flash"
+GEMINI_MODEL = GEMINI_DEFAULT_MODEL
 
 GEMINI_EXTRACTION_PROMPT = """\
 You are a medical document parser. Extract all medical claims from this image.
@@ -72,10 +66,10 @@ Rules:
 """
 
 
-def _coerce_gemini(raw: dict, document_id: str, patient_id: str) -> ClaimsJSON:
+def _coerce_gemini(raw: dict, document_id: str, patient_id: str, *, model: str) -> ClaimsJSON:
     """Like qwen._coerce_claims, but PRESERVES the model's overall_confidence
     when present (the abstain-on-unreadable path at <0.4 depends on it)."""
-    coerced = _coerce_claims(raw, document_id, patient_id, GEMINI_MODEL)
+    coerced = _coerce_claims(raw, document_id, patient_id, model)
     model_overall = raw.get("overall_confidence")
     if model_overall is not None:
         try:
@@ -95,8 +89,15 @@ class CloudExtractor(ExtractorProvider):
         if provider == "gemini":
             if not settings.GOOGLE_API_KEY:
                 raise ExtractionError("Gemini not configured (GOOGLE_API_KEY)", retryable=False)
-            raw = await self._call_gemini(file_path, mime)
-            return _coerce_gemini(raw, document_id, patient_id)
+            try:
+                raw, model_used = await self._call_gemini(file_path, mime)
+                return _coerce_gemini(raw, document_id, patient_id, model=model_used)
+            except ExtractionError:
+                if settings.OPENAI_API_KEY:
+                    logger.warning("gemini chain failed; trying OpenAI extraction fallback")
+                    raw = await self._call_openai(file_path, mime)
+                    return _coerce_claims(raw, document_id, patient_id, "cloud:openai")
+                raise
         if provider == "openai":
             if not settings.OPENAI_API_KEY:
                 raise ExtractionError("OpenAI not configured (OPENAI_API_KEY)", retryable=False)
@@ -104,9 +105,7 @@ class CloudExtractor(ExtractorProvider):
             return _coerce_claims(raw, document_id, patient_id, "cloud:openai")
         raise ExtractionError(f"unknown CLOUD_API_PROVIDER: {provider!r}", retryable=False)
 
-    async def _call_gemini(self, file_path: str, mime: str) -> dict:
-        # Import lazily so the module imports without google-genai installed
-        # (Day-1 default is mock; the SDK is only needed when actually calling).
+    async def _call_gemini(self, file_path: str, mime: str) -> tuple[dict, str]:
         from google import genai
         from google.genai import types
 
@@ -115,8 +114,8 @@ class CloudExtractor(ExtractorProvider):
 
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         try:
-            response = await client.aio.models.generate_content(
-                model=GEMINI_MODEL,
+            response, model_used = await generate_content_with_fallback(
+                client,
                 contents=[
                     types.Part.from_bytes(data=image_bytes, mime_type=mime),
                     types.Part.from_text(text=GEMINI_EXTRACTION_PROMPT),
@@ -126,11 +125,19 @@ class CloudExtractor(ExtractorProvider):
                     response_mime_type="application/json",
                 ),
             )
-            return json.loads(response.text)
+            return json.loads(response.text), model_used
         except json.JSONDecodeError as e:
             raise ExtractionError(f"Gemini returned invalid JSON: {e}", retryable=True) from e
-        except Exception as e:  # noqa: BLE001
-            raise ExtractionError(f"Gemini extraction failed: {e}", retryable=True) from e
+        except RuntimeError as e:
+            quota_hit = is_quota_exhausted(e.__cause__ or e)
+            hint = ""
+            if quota_hit:
+                hint = (
+                    " Gemini API quota exhausted — enable billing at "
+                    "https://aistudio.google.com/apikey and update GOOGLE_API_KEY, "
+                    "or set OPENAI_API_KEY for OpenAI fallback."
+                )
+            raise ExtractionError(f"Gemini extraction failed: {e}.{hint}", retryable=not quota_hit) from e
 
     async def _call_openai(self, file_path: str, mime: str) -> dict:
         with open(file_path, "rb") as f:

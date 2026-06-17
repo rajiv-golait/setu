@@ -1,13 +1,10 @@
 """Plain-language explanation for the caregiver (Telegram / web-chat reply).
 
-This is the safety boundary around the reasoner's free-text output. The rules
-here are NON-NEGOTIABLE and enforced in code, never trusted to the model:
-
+Safety rules enforced in code, never trusted to the model:
   1. Never suggest starting, stopping, or changing a dose (banned phrases).
-  2. Always end with the language-appropriate disclaimer (appended if missing).
+  2. Always end with the language-appropriate disclaimer (always appended by code).
   3. overall_confidence < 0.6 -> append a "verify against the original" note.
-  4. Never introduce a fact not in the extracted claims (the reasoner is given
-     only Current Truth; the prompt forbids new facts).
+  4. Never introduce a fact not in the extracted claims.
   5. overall_confidence < 0.4 -> ABSTAIN: do not call the model at all.
 """
 from __future__ import annotations
@@ -16,45 +13,16 @@ import logging
 
 from app.schemas.memory import CurrentTruthDTO
 from app.services.reasoning.base import ReasonerProvider
-
-logger = logging.getLogger("setu.explanation")
-
-ABSTAIN_THRESHOLD = 0.4
-LOW_CONFIDENCE_THRESHOLD = 0.6
-
-DISCLAIMER = {
-    "mr": "हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही.",
-    "hi": "यह आपके दस्तावेज़ का स्पष्टीकरण है, चिकित्सीय सलाह नहीं।",
-    "en": "This is an explanation of your document, not medical advice.",
-}
-
-ABSTAIN_MESSAGE = {
-    "mr": "फोटो अस्पष्ट आहे. कृपया स्पष्ट फोटो पाठवा.",
-    "hi": "तस्वीर धुंधली है। कृपया एक स्पष्ट तस्वीर भेजें।",
-    "en": "The photo is unclear. Please send a clearer photo.",
-}
-
-LOW_CONFIDENCE_NOTE = {
-    "mr": "काही भाग वाचणे कठीण होते — मूळ कागद तपासा.",
-    "hi": "कुछ हिस्से पढ़ना कठिन था — मूल दस्तावेज़ जाँचें।",
-    "en": "Some parts were hard to read — please verify against the original.",
-}
-
-# Never let any of these reach the caregiver (case-insensitive substring match).
-BANNED_PHRASES = (
-    "dose badhao",
-    "band karo",
-    "increase dose",
-    "decrease dose",
-    "stop taking",
-    "change your medication",
-    "take instead",
-    "switch to",
+from app.services.safety import (
+    ABSTAIN_MESSAGE,
+    ABSTAIN_THRESHOLD,
+    BANNED_PHRASES,
+    LOW_CONFIDENCE_NOTE,
+    LOW_CONFIDENCE_THRESHOLD,
+    append_disclaimer,
 )
 
-
-def _disclaimer(lang: str) -> str:
-    return DISCLAIMER.get(lang, DISCLAIMER["mr"])
+logger = logging.getLogger("setu.explanation")
 
 
 def _contains_banned(text: str) -> bool:
@@ -82,8 +50,7 @@ async def generate_explanation(
     text = await reasoner.generate_explanation(current_truth, lang, doc_type)
     text = (text or "").strip()
 
-    # Rule 1/2 — banned-phrase rejection. We cannot safely "retry" deterministically
-    # here, so we drop the unsafe sentence and fall back to a minimal safe message.
+    # Rule 1 — banned-phrase rejection: drop the unsafe text and use a safe fallback.
     if _contains_banned(text):
         logger.warning("explanation contained a banned phrase; replacing with safe minimal text")
         safe = {
@@ -99,9 +66,5 @@ async def generate_explanation(
         if note not in text:
             text = text.rstrip(".") + ". " + note
 
-    # Rule 2 — disclaimer enforcement (append if the model omitted it).
-    disclaimer = _disclaimer(lang)
-    if disclaimer not in text:
-        text = text.rstrip() + " " + disclaimer
-
-    return text.strip()
+    # Rule 2 — disclaimer always appended by code (model is instructed not to include it).
+    return append_disclaimer(text, lang)

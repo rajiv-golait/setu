@@ -6,6 +6,7 @@ import {
   Calendar,
   Camera,
   LayoutList,
+  MessageCircle,
   QrCode,
   Stethoscope,
   UserRound,
@@ -21,6 +22,7 @@ export function BottomNav() {
   const tabs = [
     { href: "/", label: t("nav.home"), icon: Camera },
     { href: "/summary", label: t("nav.summary"), icon: BookOpen },
+    { href: "/chat", label: t("nav.saathi"), icon: MessageCircle },
     { href: "/triage", label: t("nav.triage"), icon: Stethoscope },
     { href: "/doctors", label: t("nav.doctors"), icon: UserRound },
     { href: "/appointments", label: t("nav.appointments"), icon: Calendar },

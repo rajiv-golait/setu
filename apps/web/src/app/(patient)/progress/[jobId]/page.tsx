@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Check, FileText, X } from "lucide-react";
@@ -9,6 +9,7 @@ import { ErrorPanel } from "@/components/ui/state-panel";
 import { STAGE_LABELS } from "@/lib/constants";
 import { useJobPolling } from "@/lib/hooks/use-job-polling";
 import { formatFileSize, loadUploadMeta, mimeLabel } from "@/lib/upload-meta";
+import { API_BASE } from "@/lib/constants";
 
 const DEFAULT_STAGES = [
   "extraction",
@@ -24,6 +25,7 @@ export default function ProgressPage() {
   const router = useRouter();
   const { job, connState, refresh } = useJobPolling(jobId ?? null);
   const uploadMeta = useMemo(() => loadUploadMeta(), []);
+  const [retrying, setRetrying] = useState(false);
 
   const stages = job?.stages?.length ? job.stages : DEFAULT_STAGES;
   const completed = new Set(job?.completed_stages ?? []);
@@ -31,6 +33,27 @@ export default function ProgressPage() {
   const progress = Math.round((job?.progress ?? 0) * 100);
   const explanation =
     typeof job?.result?.explanation === "string" ? job.result.explanation : null;
+  const isLiveAI = job?.result?.source === "live_ai";
+
+  // Auto-redirect on completion after a brief "done" moment.
+  useEffect(() => {
+    if (job?.status !== "completed") return;
+    const docId = job?.result?.document_id as string | undefined;
+    const dest = docId ? `/summary?docId=${docId}` : "/summary";
+    const t = setTimeout(() => router.push(dest), 600);
+    return () => clearTimeout(t);
+  }, [job?.status, job?.result?.document_id, router]);
+
+  async function handleRetry() {
+    if (!jobId || retrying) return;
+    setRetrying(true);
+    try {
+      await fetch(`${API_BASE}/jobs/${jobId}/retry`, { method: "POST" });
+      refresh();
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   return (
     <div className="animate-setu-fade px-5 pb-8 pt-5">
@@ -50,6 +73,11 @@ export default function ProgressPage() {
               {formatFileSize(uploadMeta.size)} · {mimeLabel(uploadMeta.mime)}
             </p>
           </div>
+          {isLiveAI && (
+            <span className="shrink-0 rounded-full bg-success-bg px-2 py-0.5 text-xs font-semibold text-success">
+              AI verified
+            </span>
+          )}
         </div>
       )}
 
@@ -123,20 +151,8 @@ export default function ProgressPage() {
       )}
 
       {job?.status === "completed" && (
-        <div className="mt-6 space-y-3">
-          <div className="rounded-card border border-success-border bg-success-bg p-4 text-success">
-            Your explanation is ready.
-          </div>
-          <PrimaryButton onClick={() => router.push("/summary")}>
-            Read your summary
-          </PrimaryButton>
-          <button
-            type="button"
-            onClick={() => router.push("/brief")}
-            className="flex min-h-[44px] w-full items-center justify-center rounded-[13px] border border-border bg-surface-raised text-base font-semibold text-primary"
-          >
-            View doctor brief
-          </button>
+        <div className="mt-6 rounded-card border border-success-border bg-success-bg p-4 text-success text-sm font-semibold">
+          Done! Taking you to your summary…
         </div>
       )}
 
@@ -147,11 +163,11 @@ export default function ProgressPage() {
             message={job?.error?.message ?? "Earlier steps were saved."}
             code={job?.error?.code}
             retryable={job?.error?.retryable}
-            onRetry={() => router.push("/upload")}
+            onRetry={job?.error?.retryable ? handleRetry : undefined}
           />
           {!job?.error?.retryable && (
             <Link href="/upload">
-              <PrimaryButton>Retry</PrimaryButton>
+              <PrimaryButton>Upload again</PrimaryButton>
             </Link>
           )}
         </div>

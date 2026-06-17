@@ -29,3 +29,19 @@ self.addEventListener("sync", (event) => {
     event.waitUntil(Promise.resolve());
   }
 });
+
+self.addEventListener("push", (event) => {
+  const d = event.data?.json() ?? {};
+  event.waitUntil(
+    self.registration.showNotification(d.title ?? "Setu", {
+      body: d.body ?? "",
+      icon: "/icon.svg",
+      badge: "/icon.svg",
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow("/"));
+});

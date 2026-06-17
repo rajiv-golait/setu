@@ -27,12 +27,14 @@ from app.routers import auth_router as auth
 from app.routers import availability_router as availability
 from app.routers import (
     brief,
+    chat,
     consent,
     documents,
     jobs,
     memory,
     patients,
     providers,
+    push,
     referrals,
     reminders,
     shares,
@@ -59,10 +61,9 @@ API_PREFIX = "/api/v1"
 async def lifespan(app: FastAPI):
     # Models are reached over HTTP and never loaded here. Nothing to warm in-process.
     logging.getLogger("setu").info(
-        "SETU API starting (extraction=%s, reasoning=%s, demo=%s, production=%s)",
+        "SETU API starting (extraction=%s, reasoning=%s, production=%s)",
         settings.EXTRACTION_PROVIDER,
         settings.REASONING_PROVIDER,
-        settings.DEMO_MODE,
         settings.PRODUCTION,
     )
     if settings.SENTRY_DSN:
@@ -76,18 +77,42 @@ async def lifespan(app: FastAPI):
         logging.getLogger("setu").error(
             "DATABASE_URL still contains [password] — set SUPABASE_DB_PASSWORD in .env"
         )
+    # Validate Gemini model chain at startup (async, non-blocking).
+    if settings.GOOGLE_API_KEY:
+        from app.services.gemini_client import validate_model_chain
+        asyncio.create_task(validate_model_chain())
+    # Push reminder loop (no-op if VAPID keys not set).
+    from app.services.scheduler import reminder_push_loop
+    asyncio.create_task(reminder_push_loop())
+    # Ensure push_subscriptions table exists (idempotent — migration may not have run yet).
+    try:
+        from app.db.session import SessionLocal
+        from sqlalchemy import text as _text
+        async with SessionLocal() as _db:
+            await _db.execute(_text(
+                "CREATE TABLE IF NOT EXISTS push_subscriptions ("
+                "  id TEXT PRIMARY KEY, user_id TEXT NOT NULL, "
+                "  endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, "
+                "  auth TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT now())"
+            ))
+            await _db.execute(_text(
+                "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id "
+                "ON push_subscriptions (user_id)"
+            ))
+            await _db.commit()
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger("setu").warning("push_subscriptions table check skipped: %s", exc)
     # Retention sweep on boot: purge raw images past the retention window. Cheap,
     # idempotent, and never blocks startup. (A redeploy/restart is the schedule;
     # a real worker can call retention.purge_expired_documents on a timer.)
-    if not settings.DEMO_MODE:
-        try:
-            from app.db.session import SessionLocal
-            from app.services.retention import purge_expired_documents
+    try:
+        from app.db.session import SessionLocal
+        from app.services.retention import purge_expired_documents
 
-            async with SessionLocal() as db:
-                await purge_expired_documents(db)
-        except Exception as exc:  # noqa: BLE001 — must never block startup
-            logging.getLogger("setu").warning("startup purge skipped: %s", exc)
+        async with SessionLocal() as db:
+            await purge_expired_documents(db)
+    except Exception as exc:  # noqa: BLE001 — must never block startup
+        logging.getLogger("setu").warning("startup purge skipped: %s", exc)
     yield
 
 
@@ -135,6 +160,8 @@ for r in (
     shares,
     referrals,
     webchat,
+    chat,
+    push,
     consent,
     reminders,
     triage,
@@ -163,7 +190,7 @@ app.include_router(telegram.router, prefix="/telegram")
 
 @app.get("/health", tags=["health"])
 async def health() -> dict:
-    out: dict = {"status": "ok", "demo_mode": settings.DEMO_MODE}
+    out: dict = {"status": "ok"}
     if settings.database_url_unresolved:
         out["status"] = "degraded"
         out["database"] = "misconfigured"

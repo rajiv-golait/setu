@@ -1,10 +1,9 @@
-"""Patient memory (Current Truth). DEMO_MODE serves cached seed instantly."""
+"""Patient memory (Current Truth)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.deps import get_auth_user_id, get_user_role, require_patient_access
@@ -23,7 +22,7 @@ async def get_memory(
     auth_user_id: str | None = Depends(get_auth_user_id),
     role: str = Depends(get_user_role),
 ) -> CurrentTruthDTO:
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     await audit_phi_read(
         db,
         patient_id=patient.id,

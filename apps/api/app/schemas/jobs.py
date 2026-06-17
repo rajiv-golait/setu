@@ -1,6 +1,7 @@
 """Job status DTO. Job state lives in Redis only."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -21,4 +22,6 @@ class JobStatusDTO(BaseModel):
     failed_at: str | None = None
     error: dict[str, Any] | None = None
     document_id: str | None = None
+    patient_id: str | None = None
+    started_at: datetime | None = None
     result: dict[str, Any] = {}

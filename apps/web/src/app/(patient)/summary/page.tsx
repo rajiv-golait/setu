@@ -1,15 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { getSummary } from "@/lib/api";
+import { API_BASE } from "@/lib/constants";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { PatientSummary } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
 export default function SummaryPage() {
   const { patient, ready } = usePatient();
+  const searchParams = useSearchParams();
+  const docId = searchParams.get("docId");
+
   const [lang, setLang] = useState<"mr" | "en" | "hi">("mr");
   const [summary, setSummary] = useState<PatientSummary | null>(null);
+  const [fallbackText, setFallbackText] = useState<string | null>(null);
+  const [isLiveAI, setIsLiveAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -22,8 +30,23 @@ export default function SummaryPage() {
     if (!ready || !patient?.id) return;
     getSummary(patient.id, lang)
       .then(setSummary)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load summary"));
-  }, [patient?.id, ready, lang]);
+      .catch(async () => {
+        // Fall back to the raw explanation from the last processed document.
+        if (!docId) {
+          setError("Summary not ready yet. Please try again in a moment.");
+          return;
+        }
+        try {
+          const res = await fetch(`${API_BASE}/webchat/explanation/${docId}`);
+          if (!res.ok) throw new Error("no explanation");
+          const data = await res.json();
+          setFallbackText(data.explanation ?? null);
+          if (data.source === "live_ai") setIsLiveAI(true);
+        } catch {
+          setError("Could not load your summary. Please try again.");
+        }
+      });
+  }, [patient?.id, ready, lang, docId]);
 
   const usesDevanagari = lang === "mr" || lang === "hi";
 
@@ -33,7 +56,14 @@ export default function SummaryPage() {
       lang={lang}
     >
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-[23px] font-semibold tracking-tight">Your summary</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-[23px] font-semibold tracking-tight">Your summary</h1>
+          {isLiveAI && (
+            <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs font-semibold text-success">
+              AI verified
+            </span>
+          )}
+        </div>
         <div className="flex rounded-[11px] bg-[#E0E0D8] p-1">
           {(["mr", "hi", "en"] as const).map((l) => (
             <button
@@ -52,7 +82,19 @@ export default function SummaryPage() {
       </div>
 
       {error && <p className="text-danger">{error}</p>}
-      {!summary && !error && <p className="text-text-faint">Loading…</p>}
+      {!summary && !fallbackText && !error && <p className="text-text-faint">Loading…</p>}
+
+      {/* Fallback: show raw explanation text when structured summary isn't ready */}
+      {!summary && fallbackText && (
+        <div className="rounded-card border border-info-border bg-info-bg p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-info-title">
+            What we understood
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[#3A5680]">
+            {fallbackText}
+          </p>
+        </div>
+      )}
 
       {summary && (
         <>
@@ -110,6 +152,18 @@ export default function SummaryPage() {
 
           <p className="mt-5 text-sm italic text-text-faint">{summary.disclaimer}</p>
         </>
+      )}
+
+      {/* Secondary action — available once summary or fallback is showing */}
+      {(summary || fallbackText) && (
+        <Link href="/brief">
+          <button
+            type="button"
+            className="mt-6 w-full rounded-card border border-border bg-surface-raised py-3.5 text-sm font-semibold text-text-muted shadow-card"
+          >
+            View doctor brief →
+          </button>
+        </Link>
       )}
     </div>
   );

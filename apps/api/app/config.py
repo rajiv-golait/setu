@@ -10,18 +10,21 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _API_ROOT = Path(__file__).resolve().parents[1]  # apps/api
-_REPO_ROOT = Path(__file__).resolve().parents[3]  # repo root
+# Monorepo: repo root is 3 levels up; Docker image only contains apps/api.
+_config_path = Path(__file__).resolve()
+_REPO_ROOT = _config_path.parents[3] if len(_config_path.parents) > 3 else _API_ROOT
 
-# Load repo-root .env first, then apps/api/.env (local overrides).
-_ENV_FILES = (
-    str(_REPO_ROOT / ".env"),
-    str(_API_ROOT / ".env"),
+# Load repo-root .env first, then apps/api/.env (skip missing files — Railway uses env vars).
+_ENV_FILES = tuple(
+    str(p)
+    for p in (_REPO_ROOT / ".env", _API_ROOT / ".env")
+    if p.is_file()
 )
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=_ENV_FILES,
+        **({"env_file": _ENV_FILES} if _ENV_FILES else {}),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -77,6 +80,8 @@ class Settings(BaseSettings):
     # --- Demo ---
     DEMO_MODE: bool = False
     SEED_PATIENT_ID: str = "pat_demo"
+    # When true, fall back to seeded mock claims if cloud extraction fails (demo safety net).
+    EXTRACTION_MOCK_ON_CLOUD_FAILURE: bool = False
 
     # --- Production gate ---
     PRODUCTION: bool = False
@@ -100,6 +105,14 @@ class Settings(BaseSettings):
     NOTIFICATION_FROM_EMAIL: str = "noreply@setu.health"
     WHATSAPP_API_URL: str = ""
     WHATSAPP_API_TOKEN: str = ""
+
+    # --- Pipeline ---
+    PIPELINE_TIMEOUT_SECONDS: int = 90
+
+    # --- Web Push (VAPID) ---
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_CONTACT_EMAIL: str = "noreply@setu.health"
 
     # --- Observability ---
     SENTRY_DSN: str = ""

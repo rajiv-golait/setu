@@ -59,7 +59,7 @@ async def upload_document(
     await db.commit()
 
     job_id = new_id("job")
-    state = jobs_store.new_job_state(job_id, doc.id)
+    state = jobs_store.new_job_state(job_id, doc.id, patient_id)
     await jobs_store.save(state)
 
     await enqueue_pipeline(job_id, doc.id, patient_id)

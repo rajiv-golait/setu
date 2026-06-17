@@ -199,6 +199,43 @@ async def add_prescription(
         items=body.items,
         valid_until=body.valid_until,
     )
+    await db.flush()
+
+    # Back-flow: each prescription item → Claim row → recompute CurrentTruth so
+    # the new medication appears in the patient's memory immediately.
+    from datetime import date
+
+    from app.ids import new_id as _new_id
+    from app.schemas.claims import Claim as _Claim
+    from app.services import persistence as _p
+    from app.services.memory.persistence import recompute_current_truth
+
+    rx_doc_id = f"rx_{rx.id}"  # synthetic document_id for claim lineage
+    claims: list[_Claim] = []
+    for item in body.items:
+        name = item.get("name") or item.get("drug_name") or item.get("medication")
+        if not name:
+            continue
+        claims.append(
+            _Claim(
+                claim_id=_new_id("clm", 5),
+                type="medication",
+                fields={
+                    "name": name,
+                    "dose": item.get("dose") or item.get("dosage") or "",
+                    "dose_unit": item.get("dose_unit") or "",
+                    "frequency": item.get("frequency") or item.get("freq") or "",
+                    "instructions": item.get("instructions") or "",
+                },
+                confidence=1.0,
+                observed_at=date.today(),
+                needs_review=False,
+            )
+        )
+    if claims:
+        await _p.persist_claims(db, enc.patient_id, rx_doc_id, claims)
+        await recompute_current_truth(db, enc.patient_id)
+
     await db.commit()
     return {"id": rx.id}
 

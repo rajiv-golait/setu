@@ -45,16 +45,11 @@ async def _check_patient_access(
     db: AsyncSession,
     auth_user_id: str | None,
 ) -> Patient:
-    if settings.DEMO_MODE:
-        patient_id = settings.SEED_PATIENT_ID
-
     patient = (
         await db.execute(select(Patient).where(Patient.id == patient_id))
     ).scalar_one_or_none()
     if patient is None:
         raise not_found("Patient", patient_id)
-    if settings.DEMO_MODE:
-        return patient
     if settings.SUPABASE_ENABLED:
         if auth_user_id is None:
             raise AppError(UNAUTHORIZED, "Authentication required", retryable=False)
@@ -199,7 +194,7 @@ async def get_or_create_provider(db: AsyncSession, auth_user_id: str) -> Provide
         await db.execute(select(Provider).where(Provider.supabase_user_id == auth_user_id))
     ).scalar_one_or_none()
     if provider is None:
-        status = "approved" if not settings.SUPABASE_ENABLED or settings.DEMO_MODE else "pending"
+        status = "approved" if not settings.SUPABASE_ENABLED else "pending"
         provider = Provider(
             id=new_id("prv"),
             supabase_user_id=auth_user_id,
@@ -241,9 +236,6 @@ async def require_worker_patient_link(
     worker: HealthWorker = Depends(require_health_worker),
 ) -> Patient:
     from app.db.models import PatientLink
-
-    if settings.DEMO_MODE:
-        patient_id = settings.SEED_PATIENT_ID
 
     link = (
         await db.execute(

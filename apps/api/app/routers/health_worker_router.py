@@ -165,7 +165,7 @@ async def proxy_upload(
     await db.commit()
 
     job_id = new_id("job")
-    state = jobs_store.new_job_state(job_id, doc.id)
+    state = jobs_store.new_job_state(job_id, doc.id, patient.id)
     await jobs_store.save(state)
     background.add_task(run_pipeline, job_id, doc.id, patient.id)
 

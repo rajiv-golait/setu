@@ -537,3 +537,16 @@ class Vital(Base):
     __table_args__ = (
         Index("ix_vitals_patient_type", "patient_id", "vital_type", "measured_at"),
     )
+
+
+class PushSubscription(Base):
+    """Browser Web Push subscription (VAPID). One per device per user."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    p256dh: Mapped[str] = mapped_column(String, nullable=False)
+    auth: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

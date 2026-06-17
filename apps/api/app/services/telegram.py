@@ -6,9 +6,6 @@ Flow (handle_update routes a Telegram Update):
   "summary" / "सारांश"  -> reply with the tokenized brief link
   any other text        -> usage hint
 
-DEMO_MODE Path A: a photo arriving triggers an INSTANT seeded reply (the seeded
-explanation + the cached demo brief link) — no pipeline, no external AI, < 3s.
-
 HTTP client: httpx.AsyncClient against https://api.telegram.org/bot{TOKEN}/.
 File download: https://api.telegram.org/file/bot{TOKEN}/{file_path}.
 
@@ -29,11 +26,7 @@ from app.config import settings
 from app.db.models import Document, Patient
 from app.db.session import SessionLocal
 from app.ids import new_id, new_token
-from app.seed.fixtures import (
-    BRIEF_HANDOFF_MSG,
-    DEMO_SHARE_TOKEN,
-    SEEDED_EXPLANATION,
-)
+from app.seed.fixtures import BRIEF_HANDOFF_MSG
 from app.services import persistence
 
 logger = logging.getLogger("setu.telegram")
@@ -153,13 +146,6 @@ async def _handle_start(chat_id: str) -> None:
 
 
 async def _handle_media(chat_id: str, message: dict) -> None:
-    # DEMO_MODE Path A — instant seeded reply, no pipeline, no external calls.
-    if settings.DEMO_MODE:
-        await send_message(chat_id, SEEDED_EXPLANATION)
-        brief_url = f"{settings.BRIEF_BASE_URL.rstrip('/')}/brief/{DEMO_SHARE_TOKEN}"
-        await send_message(chat_id, BRIEF_HANDOFF_MSG.format(url=brief_url))
-        return
-
     # Resolve the largest photo or the document's file_id + mime.
     file_id, mime = _extract_file(message)
     if not file_id:
@@ -202,7 +188,7 @@ async def _handle_media(chat_id: str, message: dict) -> None:
         await db.commit()
 
     job_id = new_id("job")
-    state = jobs_store.new_job_state(job_id, doc_id)
+    state = jobs_store.new_job_state(job_id, doc_id, patient_id)
     await jobs_store.save(state)
 
     # Run the pipeline; it sends the explanation + brief link to this chat.

@@ -21,7 +21,7 @@ async def get_reminders(
     patient: Patient = Depends(require_patient_access),
     db: AsyncSession = Depends(get_db),
 ) -> ReminderScheduleDTO:
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     truth = await load_current_truth(db, patient_id)
     items = build_reminders(truth)
     await persistence.replace_reminders(db, patient_id, items)

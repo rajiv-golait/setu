@@ -1074,6 +1074,33 @@
         "title": "BriefPriority",
         "type": "object"
       },
+      "ChatRequest": {
+        "properties": {
+          "history": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "lang": {
+            "default": "mr",
+            "title": "Lang",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ChatRequest",
+        "type": "object"
+      },
       "Claim": {
         "properties": {
           "claim_id": {
@@ -1994,6 +2021,17 @@
             "title": "Job Id",
             "type": "string"
           },
+          "patient_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Id"
+          },
           "progress": {
             "default": 0.0,
             "title": "Progress",
@@ -2030,6 +2068,18 @@
             },
             "title": "Stages",
             "type": "array"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
           },
           "status": {
             "enum": [
@@ -3170,6 +3220,35 @@
         "title": "ReminderScheduleDTO",
         "type": "object"
       },
+      "SaathiResponse": {
+        "properties": {
+          "action": {
+            "default": "none",
+            "enum": [
+              "none",
+              "urgent_care",
+              "see_doctor",
+              "monitor"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "safe": {
+            "default": true,
+            "title": "Safe",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reply"
+        ],
+        "title": "SaathiResponse",
+        "type": "object"
+      },
       "ShareCreateRequest": {
         "properties": {
           "expires_in": {
@@ -3338,6 +3417,29 @@
           "status"
         ],
         "title": "SlotDTO",
+        "type": "object"
+      },
+      "SubscribeRequest": {
+        "properties": {
+          "auth": {
+            "title": "Auth",
+            "type": "string"
+          },
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "p256dh": {
+            "title": "P256Dh",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint",
+          "p256dh",
+          "auth"
+        ],
+        "title": "SubscribeRequest",
         "type": "object"
       },
       "SummaryMedicine": {
@@ -4649,6 +4751,56 @@
         ]
       }
     },
+    "/api/v1/appointments/{appointment_id}/patient-context": {
+      "get": {
+        "description": "Provider-only: load CurrentTruth + latest brief for the appointment's patient.",
+        "operationId": "appointment_patient_context_api_v1_appointments__appointment_id__patient_context_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Appointment Patient Context Api V1 Appointments  Appointment Id  Patient Context Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Appointment Patient Context",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
     "/api/v1/appointments/{appointment_id}/video-joined": {
       "post": {
         "operationId": "appointment_video_joined_api_v1_appointments__appointment_id__video_joined_post",
@@ -5686,6 +5838,49 @@
         ]
       }
     },
+    "/api/v1/jobs/{job_id}/retry": {
+      "post": {
+        "description": "Re-enqueue a failed job without re-uploading the document.",
+        "operationId": "retry_job_api_v1_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "list_notifications_api_v1_notifications_get",
@@ -6680,6 +6875,63 @@
         ]
       }
     },
+    "/api/v1/patients/{patient_id}/saathi": {
+      "post": {
+        "operationId": "saathi_chat_api_v1_patients__patient_id__saathi_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SaathiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Saathi Chat",
+        "tags": [
+          "saathi"
+        ]
+      }
+    },
     "/api/v1/patients/{patient_id}/summary": {
       "get": {
         "operationId": "get_summary_api_v1_patients__patient_id__summary_get",
@@ -7658,6 +7910,123 @@
         "summary": "List Provider Slots",
         "tags": [
           "scheduling"
+        ]
+      }
+    },
+    "/api/v1/push/subscribe": {
+      "delete": {
+        "operationId": "unsubscribe_api_v1_push_subscribe_delete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unsubscribe Api V1 Push Subscribe Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Unsubscribe",
+        "tags": [
+          "push"
+        ]
+      },
+      "post": {
+        "operationId": "subscribe_api_v1_push_subscribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Subscribe Api V1 Push Subscribe Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Subscribe",
+        "tags": [
+          "push"
+        ]
+      }
+    },
+    "/api/v1/push/vapid-key": {
+      "get": {
+        "operationId": "get_vapid_key_api_v1_push_vapid_key_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Vapid Key Api V1 Push Vapid Key Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Vapid Key",
+        "tags": [
+          "push"
         ]
       }
     },

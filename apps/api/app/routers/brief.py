@@ -1,14 +1,10 @@
-"""Doctor Brief routes. GET latest; POST regenerates from current truth.
-
-DEMO_MODE: GET returns the cached seed brief instantly, no pipeline.
-"""
+"""Doctor Brief routes. GET latest; POST regenerates from current truth."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.deps import get_auth_user_id, get_user_role, require_patient_access
@@ -35,16 +31,7 @@ async def get_brief(
     auth_user_id: str | None = Depends(get_auth_user_id),
     role: str = Depends(get_user_role),
 ) -> DoctorBriefDTO:
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
-    if settings.DEMO_MODE:
-        from sqlalchemy import select
-
-        seeded = (
-            await db.execute(select(Patient).where(Patient.id == patient_id))
-        ).scalar_one_or_none()
-        if seeded is None:
-            raise AppError(NOT_FOUND, "Demo patient not seeded", retryable=False)
-
+    patient_id = patient.id
     brief = await persistence.latest_brief(db, patient_id)
     if brief is None:
         raise AppError(NOT_FOUND, "No brief generated yet", details={"patient_id": patient_id}, retryable=False)
@@ -77,7 +64,7 @@ async def regenerate_brief(
 async def _load_brief_for_patient(
     db: AsyncSession, patient: Patient
 ) -> tuple[DoctorBriefDTO, str]:
-    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    patient_id = patient.id
     brief = await persistence.latest_brief(db, patient_id)
     if brief is None:
         raise AppError(NOT_FOUND, "No brief generated yet", details={"patient_id": patient_id}, retryable=False)

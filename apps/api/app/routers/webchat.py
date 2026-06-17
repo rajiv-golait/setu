@@ -1,9 +1,5 @@
 """Web-chat fallback API. Mirrors the Telegram bot for the Next.js web-chat UI.
 Mounted under /api/v1.
-
-DEMO_MODE Path B: POST /message returns job_id="demo_job"; GET /job/demo_job
-advances one stage per poll-interval; GET /explanation/* returns the seeded
-Marathi text. Zero external calls, zero GPU.
 """
 from __future__ import annotations
 
@@ -12,13 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import jobs_store
-from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.errors import not_found
 from app.ids import new_id
 from app.schemas.jobs import JobStatusDTO
-from app.seed.fixtures import SEEDED_EXPLANATION
 from app.services import ingestion
 from app.services.orchestrator import run_pipeline
 
@@ -35,18 +29,6 @@ async def webchat_message(
     patient_id: str | None = Form(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    # DEMO_MODE Path B — synthetic demo job, no pipeline.
-    if settings.DEMO_MODE:
-        await jobs_store.reset_demo_job()
-        if file is not None:
-            return {"job_id": jobs_store.DEMO_JOB_ID, "status": "processing", "message": "वाचत आहे..."}
-        if (text or "").strip().lower() in _SUMMARY_WORDS:
-            from app.seed.fixtures import DEMO_SHARE_TOKEN
-
-            return {"type": "link", "url": f"{settings.BRIEF_BASE_URL.rstrip('/')}/brief/{DEMO_SHARE_TOKEN}"}
-        return {"type": "text", "message": "फोटो पाठवा किंवा 'summary' लिहा."}
-
-    # --- Real path ---
     if file is not None:
         pid = patient_id or await _ensure_anon_patient(db)
         # DPDP gateway: consent must be on record before processing.
@@ -56,7 +38,7 @@ async def webchat_message(
         await db.commit()
 
         job_id = new_id("job")
-        state = jobs_store.new_job_state(job_id, doc.id)
+        state = jobs_store.new_job_state(job_id, doc.id, pid)
         await jobs_store.save(state)
         background.add_task(run_pipeline, job_id, doc.id, pid, None)
         return {"job_id": job_id, "status": "processing", "message": "वाचत आहे..."}
@@ -72,8 +54,6 @@ async def webchat_message(
 
 @router.get("/job/{job_id}", response_model=JobStatusDTO)
 async def webchat_job(job_id: str) -> JobStatusDTO:
-    if job_id == jobs_store.DEMO_JOB_ID:
-        return await jobs_store.demo_job_state(SEEDED_EXPLANATION)
     state = await jobs_store.load(job_id)
     if state is None:
         raise not_found("Job", job_id)
@@ -82,8 +62,6 @@ async def webchat_job(job_id: str) -> JobStatusDTO:
 
 @router.get("/explanation/{document_id}")
 async def webchat_explanation(document_id: str) -> dict:
-    if settings.DEMO_MODE:
-        return {"explanation": SEEDED_EXPLANATION, "confidence": 0.91}
     cached = await jobs_store.load_explanation(document_id)
     if cached is None:
         raise not_found("Explanation", document_id)

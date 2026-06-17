@@ -31,12 +31,8 @@ def _guess_doc_type(mime: str) -> str:
 async def require_consent(db: AsyncSession, patient_id: str) -> None:
     """Reject document processing unless DPDP consent is on record (DPDP gateway).
 
-    DEMO_MODE bypasses the gate — the seeded demo path never runs the real
-    pipeline and must work with zero setup. Imported here (not at module top) to
-    avoid a circular import with persistence.
+    Imported here (not at module top) to avoid a circular import with persistence.
     """
-    if settings.DEMO_MODE:
-        return
     from app.services import persistence
 
     if not await persistence.has_consent(db, patient_id, _CONSENT_PURPOSE):

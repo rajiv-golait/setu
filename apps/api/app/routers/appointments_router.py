@@ -212,6 +212,35 @@ async def patch_appointment(
     return await _dto(db, appt)
 
 
+@router.get("/appointments/{appointment_id}/patient-context")
+async def appointment_patient_context(
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    role: str = Depends(get_user_role),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> dict:
+    """Provider-only: load CurrentTruth + latest brief for the appointment's patient."""
+    from app.schemas.memory import CurrentTruthDTO
+    from app.services import persistence
+    from app.services.memory.persistence import load_current_truth
+
+    if role != "provider":
+        raise AppError(FORBIDDEN, "Only providers can access patient context", retryable=False)
+
+    appt = await svc.get(db, appointment_id)
+    provider = await get_or_create_provider(db, auth_user_id)
+    await svc.assert_can_view(db, appt, role=role, actor_id=provider.id, provider=provider)
+
+    current_truth = await load_current_truth(db, appt.patient_id)
+    brief = await persistence.latest_brief(db, appt.patient_id)
+
+    return {
+        "patient_id": appt.patient_id,
+        "brief": brief.model_dump() if brief else None,
+        "current_truth": current_truth.model_dump() if current_truth else None,
+    }
+
+
 @router.post("/appointments/{appointment_id}/video-joined")
 async def appointment_video_joined(
     appointment_id: str,
@@ -227,17 +256,11 @@ async def appointment_video_joined(
 
 
 async def _resolve_patient(db: AsyncSession, auth_user_id: str | None) -> Patient | None:
-    """Find the patient record for the caller. In legacy/demo mode there is no
-    Supabase id; access is then governed by _check_patient_access on write paths.
+    """Find the patient record for the caller. When Supabase auth is disabled,
+    access is governed by _check_patient_access on write paths.
     """
     from sqlalchemy import select
 
-    from app.config import settings
-
-    if settings.DEMO_MODE:
-        return (
-            await db.execute(select(Patient).where(Patient.id == settings.SEED_PATIENT_ID))
-        ).scalar_one_or_none()
     if auth_user_id is None:
         return None
     return (
