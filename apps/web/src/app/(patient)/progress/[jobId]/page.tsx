@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Check, X } from "lucide-react";
+import { Check, FileText, X } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ErrorPanel } from "@/components/ui/state-panel";
 import { STAGE_LABELS } from "@/lib/constants";
 import { useJobPolling } from "@/lib/hooks/use-job-polling";
+import { formatFileSize, loadUploadMeta, mimeLabel } from "@/lib/upload-meta";
 
-const DISPLAY_STAGES = [
+const DEFAULT_STAGES = [
   "extraction",
   "validation",
   "memory",
@@ -21,17 +23,14 @@ export default function ProgressPage() {
   const { jobId } = useParams<{ jobId: string }>();
   const router = useRouter();
   const { job, connState, refresh } = useJobPolling(jobId ?? null);
+  const uploadMeta = useMemo(() => loadUploadMeta(), []);
 
-  useEffect(() => {
-    if (job?.status === "completed") {
-      const t = setTimeout(() => router.push("/brief"), 800);
-      return () => clearTimeout(t);
-    }
-  }, [job?.status, router]);
-
+  const stages = job?.stages?.length ? job.stages : DEFAULT_STAGES;
   const completed = new Set(job?.completed_stages ?? []);
   const failed = job?.status === "failed";
   const progress = Math.round((job?.progress ?? 0) * 100);
+  const explanation =
+    typeof job?.result?.explanation === "string" ? job.result.explanation : null;
 
   return (
     <div className="animate-setu-fade px-5 pb-8 pt-5">
@@ -39,6 +38,20 @@ export default function ProgressPage() {
       <h1 className="text-[23px] font-semibold">
         {failed ? "Something went wrong" : "Reading your document"}
       </h1>
+
+      {uploadMeta && (
+        <div className="mt-4 flex items-center gap-3 rounded-card border border-border bg-surface-raised p-3 shadow-card">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-info-bg">
+            <FileText className="h-5 w-5 text-info" strokeWidth={1.7} aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{uploadMeta.fileName}</p>
+            <p className="text-xs text-text-muted">
+              {formatFileSize(uploadMeta.size)} · {mimeLabel(uploadMeta.mime)}
+            </p>
+          </div>
+        </div>
+      )}
 
       {connState === "retrying" && (
         <div className="mt-3 rounded-card border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning">
@@ -66,7 +79,7 @@ export default function ProgressPage() {
       </div>
 
       <ol className="mt-6 space-y-4">
-        {DISPLAY_STAGES.map((stage) => {
+        {stages.map((stage) => {
           const done = completed.has(stage);
           const active = job?.stage === stage && !done && !failed;
           const isFailed = failed && job?.failed_at === stage;
@@ -100,22 +113,48 @@ export default function ProgressPage() {
         })}
       </ol>
 
+      {explanation && completed.has("explanation") && (
+        <div className="mt-6 rounded-card border border-info-border bg-info-bg p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-info-title">
+            What we understood
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-[#3A5680]">{explanation}</p>
+        </div>
+      )}
+
       {job?.status === "completed" && (
-        <div className="mt-6 rounded-card border border-success-border bg-success-bg p-4 text-success">
-          Your brief is ready — opening now…
+        <div className="mt-6 space-y-3">
+          <div className="rounded-card border border-success-border bg-success-bg p-4 text-success">
+            Your explanation is ready.
+          </div>
+          <PrimaryButton onClick={() => router.push("/summary")}>
+            Read your summary
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={() => router.push("/brief")}
+            className="flex min-h-[44px] w-full items-center justify-center rounded-[13px] border border-border bg-surface-raised text-base font-semibold text-primary"
+          >
+            View doctor brief
+          </button>
         </div>
       )}
 
       {failed && (
-        <>
-          <div className="mt-6 rounded-card border border-danger-border bg-danger-bg p-4 text-sm text-danger">
-            Couldn&apos;t finish {job?.failed_at ?? "processing"} — earlier steps saved.
-            {job?.error?.retryable && " You can try again."}
-          </div>
-          <Link href="/upload" className="mt-4 block">
-            <PrimaryButton>Retry</PrimaryButton>
-          </Link>
-        </>
+        <div className="mt-6 space-y-3">
+          <ErrorPanel
+            title={`Couldn't finish ${job?.failed_at ?? "processing"}`}
+            message={job?.error?.message ?? "Earlier steps were saved."}
+            code={job?.error?.code}
+            retryable={job?.error?.retryable}
+            onRetry={() => router.push("/upload")}
+          />
+          {!job?.error?.retryable && (
+            <Link href="/upload">
+              <PrimaryButton>Retry</PrimaryButton>
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );

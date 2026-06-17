@@ -2,10 +2,11 @@
 
 EXTRACTION_PROVIDER selects the *primary*:
   mock  -> MockExtractor only (default; CI/dev, zero GPU)
-  qwen  -> try Qwen, then Cloud, then seeded Mock (never fail silently)
-  cloud -> try Cloud, then seeded Mock
+  qwen  -> try Qwen, then Cloud; Mock only when DEMO_MODE=true
+  cloud -> Cloud only; Mock only when DEMO_MODE=true
 
-extract_with_fallback() implements the chain and always returns Claims JSON.
+When DEMO_MODE=false, cloud/qwen failures surface as job errors instead of
+returning seeded demo claims.
 """
 from __future__ import annotations
 
@@ -24,9 +25,15 @@ logger = logging.getLogger("setu.extraction")
 def _chain() -> list[ExtractorProvider]:
     provider = settings.EXTRACTION_PROVIDER
     if provider == "qwen":
-        return [QwenExtractor(), CloudExtractor(), MockExtractor()]
+        chain: list[ExtractorProvider] = [QwenExtractor(), CloudExtractor()]
+        if settings.DEMO_MODE:
+            chain.append(MockExtractor())
+        return chain
     if provider == "cloud":
-        return [CloudExtractor(), MockExtractor()]
+        chain = [CloudExtractor()]
+        if settings.DEMO_MODE:
+            chain.append(MockExtractor())
+        return chain
     return [MockExtractor()]
 
 

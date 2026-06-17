@@ -147,6 +147,8 @@ class MockReasoner(ReasonerProvider):
         labs, meds = _labs(entries), _meds(entries)
         if lang == "mr":
             return self._explain_mr(labs, meds)
+        if lang == "hi":
+            return self._explain_hi(labs, meds)
         return self._explain_en(labs, meds)
 
     def _explain_mr(self, labs, meds) -> str:  # noqa: ANN001
@@ -171,6 +173,28 @@ class MockReasoner(ReasonerProvider):
         parts.append("हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही.")
         return " ".join(parts)
 
+    def _explain_hi(self, labs, meds) -> str:  # noqa: ANN001
+        parts: list[str] = []
+        for lab in labs:
+            v = lab.value
+            name = v.get("test_name", _title(lab.normalized_key))
+            if v.get("trend") == "up" and v.get("previous") is not None:
+                parts.append(f"आपका {name} स्तर ({v.get('value')}) बढ़ा है — पिछली बार ({v.get('previous')}) से।")
+            elif v.get("trend") == "down" and v.get("previous") is not None:
+                parts.append(f"आपका {name} स्तर ({v.get('value')}) कम हुआ है।")
+        if not parts:
+            parts.append("आपकी रिपोर्ट में कोई बड़ी समस्या नहीं मिली।")
+        med_names = [
+            (m.value if not m.value.get("conflict") else m.value["values"][0]).get("name", _title(m.normalized_key))
+            for m in meds
+            if m.state != "possibly_discontinued"
+        ]
+        if med_names:
+            parts.append(f"{' और '.join(med_names[:2])} चल रही हैं।")
+        parts.append("कृपया डॉक्टर से बात करें।")
+        parts.append("यह आपके दस्तावेज़ का स्पष्टीकरण है, चिकित्सीय सलाह नहीं।")
+        return " ".join(parts)
+
     def _explain_en(self, labs, meds) -> str:  # noqa: ANN001
         parts: list[str] = []
         for lab in labs:
@@ -185,9 +209,11 @@ class MockReasoner(ReasonerProvider):
         return " ".join(parts)
 
     async def generate_summary(self, current_truth: CurrentTruthDTO, brief: dict, lang: str) -> dict:
-        """Deterministic Marathi (mr) content. For non-mr, fall back to English."""
+        """Deterministic content per language (mr/hi/en). Unknown langs -> English."""
         if lang == "mr":
             return self._summary_mr(brief)
+        if lang == "hi":
+            return self._summary_hi(brief)
         return self._summary_en(brief)
 
     def _summary_mr(self, brief: dict) -> dict:
@@ -219,6 +245,37 @@ class MockReasoner(ReasonerProvider):
             "what_to_watch": ["खूप थकवा, जास्त तहान किंवा चक्कर आल्यास डॉक्टरांना सांगा."],
             "next_steps": ["डॉक्टरांना भेटा आणि औषध नियमित घ्या."],
             "disclaimer": "हा सारांश माहितीसाठी आहे, वैद्यकीय सल्ल्याचा पर्याय नाही.",
+        }
+
+    def _summary_hi(self, brief: dict) -> dict:
+        what_we_found = []
+        for lab in brief.get("recent_labs", []):
+            trend = lab.get("trend")
+            if trend == "up":
+                what_we_found.append(f"आपका {lab['test']} स्तर बढ़ा है।")
+            elif trend == "down":
+                what_we_found.append(f"आपका {lab['test']} स्तर कम हुआ है।")
+            elif lab.get("flag") in ("high", "low"):
+                what_we_found.append(f"आपका {lab['test']} स्तर सामान्य से अलग है।")
+        if not what_we_found:
+            what_we_found.append("आपकी रिपोर्ट में कोई बड़ी समस्या नहीं मिली।")
+
+        medicines = [
+            {
+                "name": f"{m['name']} {m.get('dose') or ''}".strip(),
+                "how_to_take": f"{m.get('frequency') or 'डॉक्टर की सलाह के अनुसार'} लें",
+                "plain": "नियंत्रण के लिए",
+            }
+            for m in brief.get("active_medications", [])
+        ]
+
+        return {
+            "greeting": "नमस्ते, आपकी रिपोर्ट का सरल सारांश:",
+            "what_we_found": what_we_found,
+            "your_medicines": medicines,
+            "what_to_watch": ["बहुत थकान, ज़्यादा प्यास या चक्कर आने पर डॉक्टर को बताएं।"],
+            "next_steps": ["डॉक्टर से मिलें और दवा नियमित रूप से लें।"],
+            "disclaimer": "यह सारांश केवल जानकारी के लिए है, चिकित्सीय सलाह का विकल्प नहीं।",
         }
 
     def _summary_en(self, brief: dict) -> dict:

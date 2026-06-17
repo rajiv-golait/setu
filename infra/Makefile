@@ -4,7 +4,7 @@ API_DIR = ../apps/api
 
 .PHONY: dev seed gen-client test migrate down logs
 
-## Start the full stack (db, redis, api hot-reload). Mock providers -> no GPU.
+## Start redis + api + web (Postgres is Supabase — set DATABASE_URL in ../.env first).
 dev:
 	$(COMPOSE) up --build
 

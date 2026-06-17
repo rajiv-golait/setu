@@ -49,8 +49,10 @@ async def webchat_message(
     # --- Real path ---
     if file is not None:
         pid = patient_id or await _ensure_anon_patient(db)
-        storage_path, mime, doc_type = await ingestion.store_upload(file)
-        doc = await ingestion.create_document(db, pid, storage_path, mime, doc_type)
+        # DPDP gateway: consent must be on record before processing.
+        await ingestion.require_consent(db, pid)
+        storage_path, mime, doc_type, original_hash = await ingestion.store_upload(file)
+        doc = await ingestion.create_document(db, pid, storage_path, mime, doc_type, original_hash)
         await db.commit()
 
         job_id = new_id("job")

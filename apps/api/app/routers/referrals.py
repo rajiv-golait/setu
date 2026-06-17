@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Patient, Referral
+from app.db.models import Referral
 from app.db.session import get_db
-from app.errors import not_found
+from app.deps import _check_patient_access, get_auth_user_id
 from app.ids import new_id
 from app.schemas.common import ReferralCreateRequest, ReferralDTO
 from app.services import persistence
@@ -16,12 +15,12 @@ router = APIRouter(tags=["referrals"])
 
 
 @router.post("/referrals", response_model=ReferralDTO, status_code=201)
-async def create_referral(body: ReferralCreateRequest, db: AsyncSession = Depends(get_db)) -> ReferralDTO:
-    patient = (
-        await db.execute(select(Patient).where(Patient.id == body.patient_id))
-    ).scalar_one_or_none()
-    if patient is None:
-        raise not_found("Patient", body.patient_id)
+async def create_referral(
+    body: ReferralCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> ReferralDTO:
+    await _check_patient_access(body.patient_id, db, auth_user_id)
 
     brief = await persistence.latest_brief(db, body.patient_id)
     reason = body.reason

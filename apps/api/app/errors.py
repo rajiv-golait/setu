@@ -9,7 +9,10 @@ from typing import Any
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.config import settings
 
 # Canonical error codes.
 VALIDATION_ERROR = "VALIDATION_ERROR"
@@ -17,6 +20,9 @@ EXTRACTION_FAILED = "EXTRACTION_FAILED"
 REASONING_FAILED = "REASONING_FAILED"
 NOT_FOUND = "NOT_FOUND"
 RATE_LIMITED = "RATE_LIMITED"
+CONSENT_REQUIRED = "CONSENT_REQUIRED"
+UNAUTHORIZED = "UNAUTHORIZED"
+FORBIDDEN = "FORBIDDEN"
 INTERNAL = "INTERNAL"
 
 # Default HTTP status per code.
@@ -26,6 +32,9 @@ _STATUS = {
     REASONING_FAILED: 502,
     NOT_FOUND: 404,
     RATE_LIMITED: 429,
+    CONSENT_REQUIRED: 403,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
     INTERNAL: 500,
 }
 
@@ -91,6 +100,31 @@ def register_exception_handlers(app) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content=error_body(code, str(exc.detail), retryable=exc.status_code >= 500),
+        )
+
+    @app.exception_handler(SQLAlchemyError)
+    async def _db_error(_: Request, exc: SQLAlchemyError):
+        hint = None
+        if settings.database_url_unresolved:
+            hint = "Set SUPABASE_DB_PASSWORD in .env or apps/api/.env"
+        else:
+            err = str(exc).lower()
+            if "password authentication failed" in err:
+                hint = "Wrong SUPABASE_DB_PASSWORD — reset it in Supabase Dashboard → Database"
+            elif "could not translate host" in err or "name or service not known" in err:
+                hint = (
+                    "Wrong database host — use direct connection: "
+                    "db.sevwzahlsunwqbiowbcx.supabase.co:5432"
+                )
+        message = "Database connection failed"
+        if settings.SECRET_KEY == "dev-only":
+            message = f"Database connection failed ({type(exc).__name__})"
+        details: dict[str, Any] = {"type": type(exc).__name__}
+        if hint:
+            details["hint"] = hint
+        return JSONResponse(
+            status_code=503,
+            content=error_body(INTERNAL, message, details=details, retryable=True),
         )
 
     @app.exception_handler(Exception)

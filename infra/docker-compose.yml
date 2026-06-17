@@ -1,20 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: setu
-      POSTGRES_PASSWORD: setu
-      POSTGRES_DB: setu
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U setu"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   redis:
     image: redis:7-alpine
     ports:
@@ -31,20 +15,25 @@ services:
     env_file:
       - ../.env
     environment:
-      DATABASE_URL: postgresql+psycopg://setu:setu@db:5432/setu
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to your Supabase pooler URI in .env}
       REDIS_URL: redis://redis:6379/0
       STORAGE_PATH: /data/uploads
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      SUPABASE_ENABLED: ${SUPABASE_ENABLED:-false}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      SHARE_BASE_URL: ${SHARE_BASE_URL:-http://localhost:3000/share}
+      BRIEF_BASE_URL: ${BRIEF_BASE_URL:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     ports:
       - "8000:8000"
     volumes:
       - ../apps/api:/app
       - uploads:/data/uploads
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    # Hot-reload for dev.
     command: >
       sh -c "alembic upgrade head &&
              uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
@@ -52,18 +41,22 @@ services:
   web:
     build:
       context: ../apps/web
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+        NEXT_PUBLIC_SUPABASE_ENABLED: ${NEXT_PUBLIC_SUPABASE_ENABLED:-false}
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1}
+      NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+      NEXT_PUBLIC_SUPABASE_ENABLED: ${NEXT_PUBLIC_SUPABASE_ENABLED:-false}
     ports:
       - "3000:3000"
-    volumes:
-      - ../apps/web:/app
     depends_on:
       - api
-    # `web` is owned by Claude Design; this service is a placeholder so the full
-    # stack composes. It is a no-op until the web Dockerfile exists.
-    profiles: ["web"]
 
 volumes:
-  pgdata:
   uploads:

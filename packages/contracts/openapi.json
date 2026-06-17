@@ -1,8 +1,392 @@
 {
   "components": {
     "schemas": {
+      "AccessLogDTO": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_role": {
+            "title": "Actor Role",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "resource": {
+            "title": "Resource",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actor_role",
+          "action",
+          "resource",
+          "created_at"
+        ],
+        "title": "AccessLogDTO",
+        "type": "object"
+      },
+      "AnalyticsOverviewDTO": {
+        "properties": {
+          "avg_consultation_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Consultation Minutes"
+          },
+          "consultations_completed": {
+            "title": "Consultations Completed",
+            "type": "integer"
+          },
+          "high_priority_triage": {
+            "title": "High Priority Triage",
+            "type": "integer"
+          },
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/LanguageCount"
+            },
+            "title": "Languages",
+            "type": "array"
+          },
+          "referral_completion_rate": {
+            "title": "Referral Completion Rate",
+            "type": "number"
+          },
+          "rural_patients": {
+            "title": "Rural Patients",
+            "type": "integer"
+          },
+          "total_patients": {
+            "title": "Total Patients",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "consultations_completed",
+          "rural_patients",
+          "total_patients",
+          "languages",
+          "referral_completion_rate",
+          "high_priority_triage"
+        ],
+        "title": "AnalyticsOverviewDTO",
+        "type": "object"
+      },
+      "AppointmentCreate": {
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "referral_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Id"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "specialty": {
+            "title": "Specialty",
+            "type": "string"
+          },
+          "triage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Id"
+          }
+        },
+        "required": [
+          "patient_id",
+          "specialty"
+        ],
+        "title": "AppointmentCreate",
+        "type": "object"
+      },
+      "AppointmentDTO": {
+        "properties": {
+          "consult_room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consult Room"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "provider_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Name"
+          },
+          "provider_specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Specialty"
+          },
+          "referral_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Id"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "specialty": {
+            "title": "Specialty",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          },
+          "triage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "specialty",
+          "status",
+          "requested_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AppointmentDTO",
+        "type": "object"
+      },
+      "AppointmentPatch": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "AppointmentPatch",
+        "type": "object"
+      },
+      "AppointmentStatus": {
+        "enum": [
+          "requested",
+          "accepted",
+          "confirmed",
+          "completed",
+          "declined",
+          "cancelled"
+        ],
+        "title": "AppointmentStatus",
+        "type": "string"
+      },
+      "AssignedPatientDTO": {
+        "properties": {
+          "assigned_at": {
+            "format": "date-time",
+            "title": "Assigned At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "is_rural": {
+            "default": false,
+            "title": "Is Rural",
+            "type": "boolean"
+          },
+          "lang_pref": {
+            "title": "Lang Pref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "lang_pref",
+          "assigned_at"
+        ],
+        "title": "AssignedPatientDTO",
+        "type": "object"
+      },
+      "Body_proxy_upload_api_v1_workers_patients__patient_id__documents_post": {
+        "properties": {
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_proxy_upload_api_v1_workers_patients__patient_id__documents_post",
+        "type": "object"
+      },
       "Body_upload_document_api_v1_documents_post": {
         "properties": {
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "title": "File",
@@ -153,31 +537,6 @@
         "title": "BriefFlag",
         "type": "object"
       },
-      "BriefPriority": {
-        "properties": {
-          "level": {
-            "enum": [
-              "routine",
-              "review_soon"
-            ],
-            "title": "Level",
-            "type": "string"
-          },
-          "reasons": {
-            "default": [],
-            "items": {
-              "type": "string"
-            },
-            "title": "Reasons",
-            "type": "array"
-          }
-        },
-        "required": [
-          "level"
-        ],
-        "title": "BriefPriority",
-        "type": "object"
-      },
       "BriefLab": {
         "properties": {
           "date": {
@@ -323,6 +682,31 @@
         "title": "BriefMedication",
         "type": "object"
       },
+      "BriefPriority": {
+        "properties": {
+          "level": {
+            "enum": [
+              "routine",
+              "review_soon"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reasons": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "level"
+        ],
+        "title": "BriefPriority",
+        "type": "object"
+      },
       "Claim": {
         "properties": {
           "claim_id": {
@@ -427,6 +811,125 @@
           "claims"
         ],
         "title": "ClaimsJSON",
+        "type": "object"
+      },
+      "ConsentCreateRequest": {
+        "properties": {
+          "channel": {
+            "default": "web",
+            "enum": [
+              "web",
+              "telegram"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "lang": {
+            "default": "mr",
+            "title": "Lang",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "document_processing",
+            "default": "document_processing",
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "ConsentCreateRequest",
+        "type": "object"
+      },
+      "ConsentDTO": {
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "consent_id": {
+            "title": "Consent Id",
+            "type": "string"
+          },
+          "consent_text": {
+            "title": "Consent Text",
+            "type": "string"
+          },
+          "granted_at": {
+            "format": "date-time",
+            "title": "Granted At",
+            "type": "string"
+          },
+          "lang": {
+            "title": "Lang",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "consent_id",
+          "patient_id",
+          "purpose",
+          "consent_text",
+          "lang",
+          "channel",
+          "granted_at"
+        ],
+        "title": "ConsentDTO",
+        "type": "object"
+      },
+      "ConsentWithdrawRequest": {
+        "properties": {
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "document_processing",
+            "default": "document_processing",
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "ConsentWithdrawRequest",
+        "type": "object"
+      },
+      "ConsentWithdrawResponse": {
+        "properties": {
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
+          "withdrawn": {
+            "title": "Withdrawn",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "withdrawn",
+          "patient_id",
+          "purpose"
+        ],
+        "title": "ConsentWithdrawResponse",
         "type": "object"
       },
       "CurrentTruthDTO": {
@@ -569,6 +1072,17 @@
             ],
             "title": "Confidence Notes"
           },
+          "consult_room": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consult Room"
+          },
           "flags": {
             "default": [],
             "items": {
@@ -589,39 +1103,6 @@
           "one_line": {
             "title": "One Line",
             "type": "string"
-          },
-          "referral_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Referral Reason"
-          },
-          "referred_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Referred By"
-          },
-          "specialist_type": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Specialist Type"
           },
           "patient_id": {
             "title": "Patient Id",
@@ -645,6 +1126,28 @@
             "title": "Recent Labs",
             "type": "array"
           },
+          "referral_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referral Reason"
+          },
+          "referred_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Referred By"
+          },
           "source_documents": {
             "default": [],
             "items": {
@@ -652,6 +1155,17 @@
             },
             "title": "Source Documents",
             "type": "array"
+          },
+          "specialist_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialist Type"
           },
           "suggested_questions": {
             "default": [],
@@ -747,6 +1261,62 @@
         "title": "DocumentDTO",
         "type": "object"
       },
+      "DocumentListItem": {
+        "properties": {
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "source": {
+            "default": "upload",
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "title": "Status",
+            "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "uploaded_at"
+        ],
+        "title": "DocumentListItem",
+        "type": "object"
+      },
       "DocumentUploadResponse": {
         "properties": {
           "document_id": {
@@ -768,6 +1338,53 @@
           "status"
         ],
         "title": "DocumentUploadResponse",
+        "type": "object"
+      },
+      "EsanjeewaniExportDTO": {
+        "properties": {
+          "brief_id": {
+            "title": "Brief Id",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "brief_id",
+          "text"
+        ],
+        "title": "EsanjeewaniExportDTO",
+        "type": "object"
+      },
+      "FhirExportDTO": {
+        "properties": {
+          "brief_id": {
+            "title": "Brief Id",
+            "type": "string"
+          },
+          "bundle": {
+            "additionalProperties": true,
+            "title": "Bundle",
+            "type": "object"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "brief_id",
+          "bundle"
+        ],
+        "title": "FhirExportDTO",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -884,6 +1501,24 @@
           "status"
         ],
         "title": "JobStatusDTO",
+        "type": "object"
+      },
+      "LanguageCount": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "lang_pref": {
+            "title": "Lang Pref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lang_pref",
+          "count"
+        ],
+        "title": "LanguageCount",
         "type": "object"
       },
       "PatientCreateRequest": {
@@ -1030,6 +1665,159 @@
         "title": "PatientSummaryDTO",
         "type": "object"
       },
+      "PatientUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "lang_pref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang Pref"
+          }
+        },
+        "title": "PatientUpdateRequest",
+        "type": "object"
+      },
+      "ProviderDTO": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "facility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "ProviderDTO",
+        "type": "object"
+      },
+      "ProviderUpdateRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "facility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          }
+        },
+        "title": "ProviderUpdateRequest",
+        "type": "object"
+      },
+      "ProxyPatientCreate": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "is_rural": {
+            "default": false,
+            "title": "Is Rural",
+            "type": "boolean"
+          },
+          "lang_pref": {
+            "default": "mr",
+            "title": "Lang Pref",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "ProxyPatientCreate",
+        "type": "object"
+      },
       "ReferralCreateRequest": {
         "properties": {
           "patient_id": {
@@ -1108,6 +1896,124 @@
           "created_at"
         ],
         "title": "ReferralDTO",
+        "type": "object"
+      },
+      "ReminderItem": {
+        "properties": {
+          "due_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "frequency_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Text"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "needs_confirmation": {
+            "default": false,
+            "title": "Needs Confirmation",
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "relative_to_food": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative To Food"
+          },
+          "source_claim_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Claim Id"
+          },
+          "times_of_day": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Times Of Day",
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "medication",
+              "lab_test_due",
+              "refill_due",
+              "appointment"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "label"
+        ],
+        "title": "ReminderItem",
+        "type": "object"
+      },
+      "ReminderScheduleDTO": {
+        "properties": {
+          "disclaimer": {
+            "default": "Reminders restate your doctor's prescribed schedule only. They are not medical advice and do not change any dose. Confirm anything marked unclear.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "reminders": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ReminderItem"
+            },
+            "title": "Reminders",
+            "type": "array"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "ReminderScheduleDTO",
         "type": "object"
       },
       "ShareCreateRequest": {
@@ -1286,6 +2192,120 @@
         "title": "TimelineEvent",
         "type": "object"
       },
+      "TriageRequest": {
+        "properties": {
+          "age": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age"
+          },
+          "document_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Document Ids",
+            "type": "array"
+          },
+          "existing_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Existing Conditions",
+            "type": "array"
+          },
+          "symptoms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symptoms",
+            "type": "array"
+          }
+        },
+        "title": "TriageRequest",
+        "type": "object"
+      },
+      "TriageResultDTO": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "disclaimer": {
+            "default": "This is guidance on where to seek care, not a diagnosis. It does not identify any disease or recommend medicine. In an emergency, call local emergency services or go to the nearest hospital.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "engine_version": {
+            "title": "Engine Version",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lang": {
+            "default": "mr",
+            "title": "Lang",
+            "type": "string"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "priority": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "rationale": {
+            "additionalProperties": true,
+            "title": "Rationale",
+            "type": "object"
+          },
+          "recommendation": {
+            "enum": [
+              "visit_phc",
+              "schedule_specialist",
+              "emergency"
+            ],
+            "title": "Recommendation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "priority",
+          "recommendation",
+          "rationale",
+          "engine_version",
+          "created_at"
+        ],
+        "title": "TriageResultDTO",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1325,6 +2345,237 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VitalCreate": {
+        "properties": {
+          "measured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured At"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "additionalProperties": true,
+            "title": "Value",
+            "type": "object"
+          },
+          "vital_type": {
+            "$ref": "#/components/schemas/VitalType"
+          }
+        },
+        "required": [
+          "vital_type",
+          "value",
+          "unit"
+        ],
+        "title": "VitalCreate",
+        "type": "object"
+      },
+      "VitalDTO": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          },
+          "flag_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "measured_at": {
+            "format": "date-time",
+            "title": "Measured At",
+            "type": "string"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "additionalProperties": true,
+            "title": "Value",
+            "type": "object"
+          },
+          "vital_type": {
+            "title": "Vital Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "patient_id",
+          "vital_type",
+          "value",
+          "unit",
+          "measured_at",
+          "source",
+          "created_at"
+        ],
+        "title": "VitalDTO",
+        "type": "object"
+      },
+      "VitalType": {
+        "enum": [
+          "blood_pressure",
+          "blood_sugar",
+          "spo2",
+          "heart_rate"
+        ],
+        "title": "VitalType",
+        "type": "string"
+      },
+      "VitalsSummaryDTO": {
+        "properties": {
+          "latest": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/VitalDTO"
+            },
+            "title": "Latest",
+            "type": "object"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "trends": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Trends",
+            "type": "object"
+          }
+        },
+        "required": [
+          "patient_id"
+        ],
+        "title": "VitalsSummaryDTO",
+        "type": "object"
+      },
+      "WorkerDTO": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "District"
+          },
+          "facility_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Name"
+          },
+          "facility_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility Type"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "created_at"
+        ],
+        "title": "WorkerDTO",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "bearerAuth": {
+        "bearerFormat": "JWT",
+        "description": "Supabase access token (required when SUPABASE_ENABLED=true)",
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -1334,359 +2585,42 @@
   },
   "openapi": "3.1.0",
   "paths": {
-    "/api/v1/documents": {
-      "post": {
-        "operationId": "upload_document_api_v1_documents_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_document_api_v1_documents_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DocumentUploadResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upload Document",
-        "tags": [
-          "documents"
-        ]
-      }
-    },
-    "/api/v1/documents/{document_id}": {
+    "/api/v1/admin/analytics/overview": {
       "get": {
-        "operationId": "get_document_api_v1_documents__document_id__get",
+        "operationId": "analytics_overview_api_v1_admin_analytics_overview_get",
         "parameters": [
           {
-            "in": "path",
-            "name": "document_id",
-            "required": true,
+            "in": "query",
+            "name": "from",
+            "required": false,
             "schema": {
-              "title": "Document Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DocumentDTO"
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
                 }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Document",
-        "tags": [
-          "documents"
-        ]
-      }
-    },
-    "/api/v1/jobs/{job_id}": {
-      "get": {
-        "operationId": "get_job_api_v1_jobs__job_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/JobStatusDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Job",
-        "tags": [
-          "jobs"
-        ]
-      }
-    },
-    "/api/v1/patients": {
-      "post": {
-        "operationId": "create_patient_api_v1_patients_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PatientCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PatientDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Patient",
-        "tags": [
-          "patients"
-        ]
-      }
-    },
-    "/api/v1/patients/{patient_id}": {
-      "get": {
-        "operationId": "get_patient_api_v1_patients__patient_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patient_id",
-            "required": true,
-            "schema": {
-              "title": "Patient Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PatientDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Patient",
-        "tags": [
-          "patients"
-        ]
-      }
-    },
-    "/api/v1/patients/{patient_id}/brief": {
-      "get": {
-        "operationId": "get_brief_api_v1_patients__patient_id__brief_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patient_id",
-            "required": true,
-            "schema": {
-              "title": "Patient Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DoctorBriefDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Brief",
-        "tags": [
-          "brief"
-        ]
-      },
-      "post": {
-        "operationId": "regenerate_brief_api_v1_patients__patient_id__brief_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patient_id",
-            "required": true,
-            "schema": {
-              "title": "Patient Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DoctorBriefDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Regenerate Brief",
-        "tags": [
-          "brief"
-        ]
-      }
-    },
-    "/api/v1/patients/{patient_id}/memory": {
-      "get": {
-        "operationId": "get_memory_api_v1_patients__patient_id__memory_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patient_id",
-            "required": true,
-            "schema": {
-              "title": "Patient Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CurrentTruthDTO"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Memory",
-        "tags": [
-          "memory"
-        ]
-      }
-    },
-    "/api/v1/patients/{patient_id}/summary": {
-      "get": {
-        "operationId": "get_summary_api_v1_patients__patient_id__summary_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "patient_id",
-            "required": true,
-            "schema": {
-              "title": "Patient Id",
-              "type": "string"
+              ],
+              "title": "From"
             }
           },
           {
             "in": "query",
-            "name": "lang",
+            "name": "to",
             "required": false,
             "schema": {
-              "default": "mr",
-              "title": "Lang",
-              "type": "string"
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
             }
           }
         ],
@@ -1695,7 +2629,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PatientSummaryDTO"
+                  "$ref": "#/components/schemas/AnalyticsOverviewDTO"
                 }
               }
             },
@@ -1712,20 +2646,81 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Summary",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Analytics Overview",
         "tags": [
-          "summary"
+          "analytics"
         ]
       }
     },
-    "/api/v1/referrals": {
+    "/api/v1/appointments": {
+      "get": {
+        "operationId": "list_appointments_api_v1_appointments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AppointmentDTO"
+                  },
+                  "title": "Response List Appointments Api V1 Appointments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Appointments",
+        "tags": [
+          "appointments"
+        ]
+      },
       "post": {
-        "operationId": "create_referral_api_v1_referrals_post",
+        "operationId": "create_appointment_api_v1_appointments_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ReferralCreateRequest"
+                "$ref": "#/components/schemas/AppointmentCreate"
               }
             }
           },
@@ -1736,7 +2731,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ReferralDTO"
+                  "$ref": "#/components/schemas/AppointmentDTO"
                 }
               }
             },
@@ -1753,31 +2748,47 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Referral",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Appointment",
         "tags": [
-          "referrals"
+          "appointments"
         ]
       }
     },
-    "/api/v1/shares": {
-      "post": {
-        "operationId": "create_share_api_v1_shares_post",
+    "/api/v1/appointments/{appointment_id}": {
+      "patch": {
+        "operationId": "patch_appointment_api_v1_appointments__appointment_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ShareCreateRequest"
+                "$ref": "#/components/schemas/AppointmentPatch"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "201": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ShareDTO"
+                  "$ref": "#/components/schemas/AppointmentDTO"
                 }
               }
             },
@@ -1794,9 +2805,14 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Create Share",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Patch Appointment",
         "tags": [
-          "shares"
+          "appointments"
         ]
       }
     },
@@ -1854,6 +2870,1554 @@
           }
         },
         "summary": "Get Brief Snapshot",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/brief/{token}/exports/esanjeewani": {
+      "get": {
+        "description": "PUBLIC — eSanjeevani-formatted text for a frozen share snapshot.",
+        "operationId": "get_public_brief_esanjeewani_api_v1_brief__token__exports_esanjeewani_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Brief Esanjeewani",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/brief/{token}/fhir": {
+      "get": {
+        "description": "PUBLIC — FHIR Bundle for a frozen share snapshot.",
+        "operationId": "get_public_brief_fhir_api_v1_brief__token__fhir_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Public Brief Fhir",
+        "tags": [
+          "shares"
+        ]
+      }
+    },
+    "/api/v1/consent": {
+      "post": {
+        "operationId": "grant_consent_api_v1_consent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Grant Consent",
+        "tags": [
+          "consent"
+        ]
+      }
+    },
+    "/api/v1/consent/withdraw": {
+      "post": {
+        "operationId": "withdraw_consent_api_v1_consent_withdraw_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentWithdrawRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentWithdrawResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withdraw Consent",
+        "tags": [
+          "consent"
+        ]
+      }
+    },
+    "/api/v1/documents": {
+      "post": {
+        "operationId": "upload_document_api_v1_documents_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_document_api_v1_documents_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/{document_id}": {
+      "delete": {
+        "operationId": "delete_document_api_v1_documents__document_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete Document Api V1 Documents  Document Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete Document",
+        "tags": [
+          "documents"
+        ]
+      },
+      "get": {
+        "operationId": "get_document_api_v1_documents__document_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_job_api_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStatusDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/patients": {
+      "post": {
+        "description": "Legacy anonymous patient create — disabled when Supabase auth is enabled.",
+        "operationId": "create_patient_api_v1_patients_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Patient",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/me": {
+      "get": {
+        "description": "Find or create the patient record linked to the authenticated Supabase user.",
+        "operationId": "get_or_create_me_api_v1_patients_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Or Create Me",
+        "tags": [
+          "patients"
+        ]
+      },
+      "patch": {
+        "operationId": "update_me_api_v1_patients_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatientUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Me",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}": {
+      "get": {
+        "operationId": "get_patient_api_v1_patients__patient_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Patient",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/access-log": {
+      "get": {
+        "operationId": "list_access_log_api_v1_patients__patient_id__access_log_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccessLogDTO"
+                  },
+                  "title": "Response List Access Log Api V1 Patients  Patient Id  Access Log Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Access Log",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/brief": {
+      "get": {
+        "operationId": "get_brief_api_v1_patients__patient_id__brief_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoctorBriefDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Brief",
+        "tags": [
+          "brief"
+        ]
+      },
+      "post": {
+        "operationId": "regenerate_brief_api_v1_patients__patient_id__brief_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DoctorBriefDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Regenerate Brief",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/brief/exports/esanjeewani": {
+      "get": {
+        "operationId": "get_brief_esanjeewani_api_v1_patients__patient_id__brief_exports_esanjeewani_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EsanjeewaniExportDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Brief Esanjeewani",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/brief/exports/esanjeewani/download": {
+      "get": {
+        "operationId": "download_brief_esanjeewani_api_v1_patients__patient_id__brief_exports_esanjeewani_download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Brief Esanjeewani",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/brief/fhir": {
+      "get": {
+        "operationId": "get_brief_fhir_api_v1_patients__patient_id__brief_fhir_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FhirExportDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Brief Fhir",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/brief/fhir/download": {
+      "get": {
+        "operationId": "download_brief_fhir_api_v1_patients__patient_id__brief_fhir_download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Download Brief Fhir",
+        "tags": [
+          "brief"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/data": {
+      "delete": {
+        "description": "DPDP erasure: purge ALL raw images for this patient.",
+        "operationId": "delete_my_data_api_v1_patients__patient_id__data_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delete My Data Api V1 Patients  Patient Id  Data Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete My Data",
+        "tags": [
+          "patients"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/documents": {
+      "get": {
+        "operationId": "list_patient_documents_api_v1_patients__patient_id__documents_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentListItem"
+                  },
+                  "title": "Response List Patient Documents Api V1 Patients  Patient Id  Documents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Patient Documents",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/memory": {
+      "get": {
+        "operationId": "get_memory_api_v1_patients__patient_id__memory_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentTruthDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Memory",
+        "tags": [
+          "memory"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/reminders": {
+      "get": {
+        "operationId": "get_reminders_api_v1_patients__patient_id__reminders_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderScheduleDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Reminders",
+        "tags": [
+          "reminders"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/summary": {
+      "get": {
+        "operationId": "get_summary_api_v1_patients__patient_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lang"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientSummaryDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Summary",
+        "tags": [
+          "summary"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/triage": {
+      "get": {
+        "operationId": "list_triage_api_v1_patients__patient_id__triage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TriageResultDTO"
+                  },
+                  "title": "Response List Triage Api V1 Patients  Patient Id  Triage Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Triage",
+        "tags": [
+          "triage"
+        ]
+      },
+      "post": {
+        "operationId": "run_triage_api_v1_patients__patient_id__triage_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriageResultDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Run Triage",
+        "tags": [
+          "triage"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/vitals": {
+      "get": {
+        "operationId": "list_patient_vitals_api_v1_patients__patient_id__vitals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vital_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vital Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VitalDTO"
+                  },
+                  "title": "Response List Patient Vitals Api V1 Patients  Patient Id  Vitals Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Patient Vitals",
+        "tags": [
+          "vitals"
+        ]
+      },
+      "post": {
+        "operationId": "create_vital_api_v1_patients__patient_id__vitals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VitalCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VitalDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Vital",
+        "tags": [
+          "vitals"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/vitals/summary": {
+      "get": {
+        "operationId": "vitals_summary_api_v1_patients__patient_id__vitals_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VitalsSummaryDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Vitals Summary",
+        "tags": [
+          "vitals"
+        ]
+      }
+    },
+    "/api/v1/providers/me": {
+      "get": {
+        "operationId": "get_or_create_me_api_v1_providers_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Or Create Me",
+        "tags": [
+          "providers"
+        ]
+      },
+      "patch": {
+        "operationId": "update_me_api_v1_providers_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update Me",
+        "tags": [
+          "providers"
+        ]
+      }
+    },
+    "/api/v1/referrals": {
+      "post": {
+        "operationId": "create_referral_api_v1_referrals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Referral",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/shares": {
+      "post": {
+        "operationId": "create_share_api_v1_shares_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Share",
         "tags": [
           "shares"
         ]
@@ -2027,6 +4591,212 @@
         "summary": "Webchat Message",
         "tags": [
           "webchat"
+        ]
+      }
+    },
+    "/api/v1/workers/me": {
+      "get": {
+        "operationId": "get_worker_me_api_v1_workers_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkerDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Worker Me",
+        "tags": [
+          "health-workers"
+        ]
+      }
+    },
+    "/api/v1/workers/patients": {
+      "get": {
+        "operationId": "list_assigned_patients_api_v1_workers_patients_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssignedPatientDTO"
+                  },
+                  "title": "Response List Assigned Patients Api V1 Workers Patients Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List Assigned Patients",
+        "tags": [
+          "health-workers"
+        ]
+      },
+      "post": {
+        "operationId": "register_patient_api_v1_workers_patients_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProxyPatientCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register Patient",
+        "tags": [
+          "health-workers"
+        ]
+      }
+    },
+    "/api/v1/workers/patients/{patient_id}/documents": {
+      "post": {
+        "operationId": "proxy_upload_api_v1_workers_patients__patient_id__documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_proxy_upload_api_v1_workers_patients__patient_id__documents_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Proxy Upload Api V1 Workers Patients  Patient Id  Documents Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Proxy Upload",
+        "tags": [
+          "health-workers"
+        ]
+      }
+    },
+    "/api/v1/workers/patients/{patient_id}/share": {
+      "post": {
+        "operationId": "proxy_share_api_v1_workers_patients__patient_id__share_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Proxy Share",
+        "tags": [
+          "health-workers"
         ]
       }
     },

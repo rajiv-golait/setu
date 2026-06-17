@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Volume2 } from "lucide-react";
 import { getSummary } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { PatientSummary } from "@/lib/types";
@@ -9,9 +8,15 @@ import { cn } from "@/lib/cn";
 
 export default function SummaryPage() {
   const { patient, ready } = usePatient();
-  const [lang, setLang] = useState<"mr" | "en">("mr");
+  const [lang, setLang] = useState<"mr" | "en" | "hi">("mr");
   const [summary, setSummary] = useState<PatientSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!ready || !patient?.id) return;
+    const pref = (patient.langPref ?? "mr") as "mr" | "en" | "hi";
+    setLang(pref === "hi" ? "hi" : pref === "en" ? "en" : "mr");
+  }, [patient?.langPref, patient?.id, ready]);
 
   useEffect(() => {
     if (!ready || !patient?.id) return;
@@ -20,17 +25,17 @@ export default function SummaryPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load summary"));
   }, [patient?.id, ready, lang]);
 
-  const isMr = lang === "mr";
+  const usesDevanagari = lang === "mr" || lang === "hi";
 
   return (
     <div
-      className={cn("animate-setu-fade px-5 pb-8 pt-5", isMr && "font-devanagari")}
+      className={cn("animate-setu-fade px-5 pb-8 pt-5", usesDevanagari && "font-devanagari")}
       lang={lang}
     >
       <div className="mb-5 flex items-center justify-between">
         <h1 className="text-[23px] font-semibold tracking-tight">Your summary</h1>
         <div className="flex rounded-[11px] bg-[#E0E0D8] p-1">
-          {(["mr", "en"] as const).map((l) => (
+          {(["mr", "hi", "en"] as const).map((l) => (
             <button
               key={l}
               type="button"
@@ -40,7 +45,7 @@ export default function SummaryPage() {
                 lang === l ? "bg-white text-primary shadow-sm" : "text-text-muted",
               )}
             >
-              {l === "mr" ? "मराठी" : "English"}
+              {l === "mr" ? "मराठी" : l === "hi" ? "हिंदी" : "English"}
             </button>
           ))}
         </div>
@@ -78,7 +83,7 @@ export default function SummaryPage() {
                   className="rounded-card border border-border bg-surface-raised p-4 shadow-card"
                 >
                   <p className="font-sans font-semibold">{m.name}</p>
-                  <p className={cn("mt-1 text-base", isMr && "font-devanagari")}>{m.how_to_take}</p>
+                  <p className={cn("mt-1 text-base", usesDevanagari && "font-devanagari")}>{m.how_to_take}</p>
                   <p className="mt-0.5 text-sm text-text-muted">{m.plain}</p>
                 </div>
               ))}
@@ -104,15 +109,6 @@ export default function SummaryPage() {
           </section>
 
           <p className="mt-5 text-sm italic text-text-faint">{summary.disclaimer}</p>
-
-          <button
-            type="button"
-            aria-label="Listen to this summary"
-            className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[13px] border border-border bg-surface-raised text-[15px] font-semibold text-primary"
-          >
-            <Volume2 className="h-[18px] w-[18px]" aria-hidden />
-            Listen to this summary
-          </button>
         </>
       )}
     </div>

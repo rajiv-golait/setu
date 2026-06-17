@@ -17,6 +17,7 @@ background, so a slow/failed handler never causes Telegram to retry.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import os
 
@@ -29,8 +30,8 @@ from app.db.models import Document, Patient
 from app.db.session import SessionLocal
 from app.ids import new_id, new_token
 from app.seed.fixtures import (
-    DEMO_SHARE_TOKEN,
     BRIEF_HANDOFF_MSG,
+    DEMO_SHARE_TOKEN,
     SEEDED_EXPLANATION,
 )
 from app.services import persistence
@@ -195,6 +196,7 @@ async def _handle_media(chat_id: str, message: dict) -> None:
             mime=mime,
             source="telegram",
             status="pending",
+            original_hash=hashlib.sha256(data).hexdigest(),
         )
         db.add(doc)
         await db.commit()

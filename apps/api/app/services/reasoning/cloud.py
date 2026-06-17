@@ -97,8 +97,6 @@ class GeminiReasonerProvider(ReasonerProvider):
     async def generate_explanation(
         self, current_truth: CurrentTruthDTO, lang: str, doc_type: str
     ) -> str:
-        from google.genai import types
-
         truth_summary = _format_truth_for_prompt(current_truth)
         lang_name = _LANG_NAME.get(lang, "Marathi")
         disclaimer = _DISCLAIMER.get(lang, _DISCLAIMER["mr"])
@@ -117,6 +115,10 @@ Patient data:
 {truth_summary}
 """
         try:
+            # Lazy import INSIDE the try so a missing/broken SDK routes to the
+            # deterministic mock fallback like any other cloud failure.
+            from google.genai import types
+
             response = await self._client().aio.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=prompt,
@@ -125,9 +127,12 @@ Patient data:
                 ),
             )
             explanation = (response.text or "").strip()
-        except Exception as exc:  # noqa: BLE001 — never ship empty; deterministic fallback
-            logger.warning("gemini explanation failed (%s); using mock fallback", exc)
-            return await self._fallback.generate_explanation(current_truth, lang, doc_type)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("gemini explanation failed (%s)", exc)
+            if settings.DEMO_MODE:
+                logger.warning("using mock fallback (DEMO_MODE)")
+                return await self._fallback.generate_explanation(current_truth, lang, doc_type)
+            raise
 
         # Safety enforcement in code — never trust the model alone.
         if disclaimer not in explanation:
@@ -135,8 +140,6 @@ Patient data:
         return explanation
 
     async def generate_brief(self, current_truth: CurrentTruthDTO) -> dict:
-        from google.genai import types
-
         truth_summary = _format_truth_for_prompt(current_truth)
         prompt = f"""Generate a doctor-facing medical brief from this patient data.
 Return ONLY valid JSON with this exact structure:
@@ -161,6 +164,8 @@ Patient data:
 {truth_summary}
 """
         try:
+            from google.genai import types
+
             response = await self._client().aio.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=prompt,
@@ -174,9 +179,12 @@ Patient data:
                 if not content.get(k):
                     raise ValueError(f"missing {k}")
             return content
-        except Exception as exc:  # noqa: BLE001 — any failure routes to mock
-            logger.warning("gemini brief failed (%s); using mock fallback", exc)
-            return await self._fallback.generate_brief(current_truth)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("gemini brief failed (%s)", exc)
+            if settings.DEMO_MODE:
+                logger.warning("using mock fallback (DEMO_MODE)")
+                return await self._fallback.generate_brief(current_truth)
+            raise
 
     async def generate_summary(self, current_truth: CurrentTruthDTO, brief: dict, lang: str) -> dict:
         # Patient summary is no longer in the pipeline; ABC still requires it.

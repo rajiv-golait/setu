@@ -13,6 +13,11 @@ class PatientCreateRequest(BaseModel):
     lang_pref: str = "mr"
 
 
+class PatientUpdateRequest(BaseModel):
+    display_name: str | None = None
+    lang_pref: str | None = None
+
+
 class PatientDTO(BaseModel):
     id: str
     display_name: str | None = None

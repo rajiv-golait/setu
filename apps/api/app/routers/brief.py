@@ -5,34 +5,42 @@ DEMO_MODE: GET returns the cached seed brief instantly, no pipeline.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
-from app.errors import NOT_FOUND, AppError, not_found
+from app.deps import require_patient_access
+from app.errors import NOT_FOUND, AppError
 from app.schemas.brief import DoctorBriefDTO
+from app.schemas.exports import EsanjeewaniExportDTO, FhirExportDTO
 from app.services import persistence
 from app.services.brief import build_brief
-from app.services.memory.persistence import recompute_current_truth
+from app.services.esanjeewani_export import brief_to_esanjeewani_text
+from app.services.fhir_export import brief_to_fhir_bundle
+from app.services.memory.persistence import load_current_truth, recompute_current_truth
 from app.services.orchestrator import _source_documents
 from app.services.reasoning.factory import get_reasoner
 
 router = APIRouter(prefix="/patients", tags=["brief"])
 
 
-async def _ensure_patient(db: AsyncSession, patient_id: str) -> Patient:
-    patient = (
-        await db.execute(select(Patient).where(Patient.id == patient_id))
-    ).scalar_one_or_none()
-    if patient is None:
-        raise not_found("Patient", patient_id)
-    return patient
-
-
 @router.get("/{patient_id}/brief", response_model=DoctorBriefDTO)
-async def get_brief(patient_id: str, db: AsyncSession = Depends(get_db)) -> DoctorBriefDTO:
-    await _ensure_patient(db, patient_id)
+async def get_brief(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> DoctorBriefDTO:
+    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    if settings.DEMO_MODE:
+        from sqlalchemy import select
+
+        seeded = (
+            await db.execute(select(Patient).where(Patient.id == patient_id))
+        ).scalar_one_or_none()
+        if seeded is None:
+            raise AppError(NOT_FOUND, "Demo patient not seeded", retryable=False)
+
     brief = await persistence.latest_brief(db, patient_id)
     if brief is None:
         raise AppError(NOT_FOUND, "No brief generated yet", details={"patient_id": patient_id}, retryable=False)
@@ -40,12 +48,77 @@ async def get_brief(patient_id: str, db: AsyncSession = Depends(get_db)) -> Doct
 
 
 @router.post("/{patient_id}/brief", response_model=DoctorBriefDTO, status_code=201)
-async def regenerate_brief(patient_id: str, db: AsyncSession = Depends(get_db)) -> DoctorBriefDTO:
-    await _ensure_patient(db, patient_id)
-    truth = await recompute_current_truth(db, patient_id)
+async def regenerate_brief(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> DoctorBriefDTO:
+    truth = await recompute_current_truth(db, patient.id)
     reasoner = get_reasoner()
-    source_docs = await _source_documents(db, patient_id)
-    brief = await build_brief(patient_id, truth, reasoner, source_docs)
+    source_docs = await _source_documents(db, patient.id)
+    brief = await build_brief(patient.id, truth, reasoner, source_docs)
     await persistence.persist_brief(db, brief)
     await db.commit()
     return brief
+
+
+async def _load_brief_for_patient(
+    db: AsyncSession, patient: Patient
+) -> tuple[DoctorBriefDTO, str]:
+    patient_id = settings.SEED_PATIENT_ID if settings.DEMO_MODE else patient.id
+    brief = await persistence.latest_brief(db, patient_id)
+    if brief is None:
+        raise AppError(NOT_FOUND, "No brief generated yet", details={"patient_id": patient_id}, retryable=False)
+    label = patient.display_name or "Patient"
+    return brief, label
+
+
+@router.get("/{patient_id}/brief/fhir", response_model=FhirExportDTO)
+async def get_brief_fhir(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> FhirExportDTO:
+    brief, label = await _load_brief_for_patient(db, patient)
+    truth = await load_current_truth(db, brief.patient_id)
+    bundle = brief_to_fhir_bundle(brief, truth=truth, patient_display=label)
+    return FhirExportDTO(patient_id=brief.patient_id, brief_id=brief.brief_id, bundle=bundle)
+
+
+@router.get("/{patient_id}/brief/exports/esanjeewani", response_model=EsanjeewaniExportDTO)
+async def get_brief_esanjeewani(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> EsanjeewaniExportDTO:
+    brief, label = await _load_brief_for_patient(db, patient)
+    text = brief_to_esanjeewani_text(brief, patient_label=label)
+    return EsanjeewaniExportDTO(patient_id=brief.patient_id, brief_id=brief.brief_id, text=text)
+
+
+@router.get("/{patient_id}/brief/fhir/download")
+async def download_brief_fhir(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+    brief, label = await _load_brief_for_patient(db, patient)
+    truth = await load_current_truth(db, brief.patient_id)
+    bundle = brief_to_fhir_bundle(brief, truth=truth, patient_display=label)
+    return JSONResponse(
+        content=bundle,
+        headers={
+            "Content-Disposition": f'attachment; filename="setu-{brief.brief_id}.fhir.json"'
+        },
+    )
+
+
+@router.get("/{patient_id}/brief/exports/esanjeewani/download")
+async def download_brief_esanjeewani(
+    patient: Patient = Depends(require_patient_access),
+    db: AsyncSession = Depends(get_db),
+) -> PlainTextResponse:
+    brief, label = await _load_brief_for_patient(db, patient)
+    text = brief_to_esanjeewani_text(brief, patient_label=label)
+    return PlainTextResponse(
+        content=text,
+        headers={
+            "Content-Disposition": f'attachment; filename="setu-{brief.brief_id}-esanjeewani.txt"'
+        },
+    )

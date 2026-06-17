@@ -23,14 +23,24 @@ upload ─▶ ingestion ─▶ [orchestrator: extraction → validation → memo
 - **Safety flags** in the brief are computed by code, not the model.
 - **Shares** embed an immutable snapshot — later uploads don't change a shared link.
 
-## Run it (Docker, recommended)
+## Run it (Docker)
 
 ```bash
-cp .env.example .env          # from repo root
+cp .env.example .env          # from repo root — set DATABASE_URL to Supabase pooler URI
 cd infra
-make dev                      # db + redis + api (hot-reload), mock providers
-make seed                     # demo patient: claims + truth + brief + summary + share
+make dev                      # redis + api (hot-reload) + web
+make seed                     # demo patient (writes to Supabase if DATABASE_URL is set)
 make gen-client               # export packages/contracts/openapi.json
+```
+
+Postgres runs on **Supabase** (see `infra/SUPABASE.md`). Local Docker only runs Redis + API + web.
+
+## Run it (local uvicorn + npm, recommended on Windows)
+
+```bash
+cd infra && docker compose up redis -d
+cd apps/api && uvicorn app.main:app --reload --port 8000   # uses apps/api/.env
+cd apps/web && npm run dev
 ```
 
 API at http://localhost:8000 — docs at `/docs`, schema at `/openapi.json`.

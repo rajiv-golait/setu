@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getBrief } from "@/lib/api";
 import { BriefView } from "@/components/brief/brief-view";
+import { BriefSkeleton } from "@/components/ui/skeleton";
+import { ErrorPanel } from "@/components/ui/state-panel";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { DoctorBrief } from "@/lib/types";
 
@@ -41,27 +43,30 @@ export default function BriefPage() {
     );
   }
 
-  if (error || !brief) {
+  if (error) {
     return (
-      <div className="px-5 py-10 text-center">
-        <p className="text-text-muted">{error ?? "No brief yet. Upload a document first."}</p>
-        <Link href="/" className="mt-4 inline-block text-primary underline">
-          Back to home
+      <div className="px-5 py-8">
+        <ErrorPanel title="Couldn't load brief" message={error} retryable onRetry={() => window.location.reload()} />
+        <Link href="/upload" className="mt-4 block text-center text-sm font-semibold text-primary">
+          Upload a document
+        </Link>
+      </div>
+    );
+  }
+
+  if (!brief) {
+    return (
+      <div className="px-5 py-8">
+        <ErrorPanel
+          title="No brief yet"
+          message="Upload a prescription or lab report to generate your doctor brief."
+        />
+        <Link href="/upload" className="mt-4 block text-center text-sm font-semibold text-primary">
+          Upload a document
         </Link>
       </div>
     );
   }
 
   return <BriefView brief={brief} patientName={patient.displayName} />;
-}
-
-function BriefSkeleton() {
-  return (
-    <div className="animate-pulse px-[18px] py-[18px]">
-      <div className="h-32 rounded-hero bg-[#E8E8E2]" />
-      <div className="mt-4 h-20 rounded-card bg-[#E8E8E2]" />
-      <div className="mt-3 h-20 rounded-card bg-[#E8E8E2]" />
-      <div className="mt-3 h-20 rounded-card bg-[#E8E8E2]" />
-    </div>
-  );
 }

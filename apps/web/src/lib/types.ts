@@ -52,6 +52,25 @@ export interface DoctorBrief {
   referral_reason?: string | null;
   specialist_type?: string | null;
   priority?: BriefPriority | null;
+  consult_room?: string | null;
+}
+
+export interface ReminderItem {
+  type: "medication" | "lab_test_due" | "refill_due";
+  label: string;
+  frequency_text?: string | null;
+  times_of_day?: string[];
+  relative_to_food?: string | null;
+  due_date?: string | null;
+  source_claim_id?: string | null;
+  needs_confirmation?: boolean;
+  note?: string | null;
+}
+
+export interface ReminderSchedule {
+  patient_id: string;
+  reminders: ReminderItem[];
+  disclaimer: string;
 }
 
 export interface ShareSnapshot {
@@ -135,4 +154,131 @@ export interface DocumentListItem {
   source: string;
   status: string;
   uploaded_at: string;
+}
+
+// --- Provider / doctor portal ---
+
+export interface ProviderRecord {
+  id: string;
+  display_name?: string | null;
+  specialty?: string | null;
+  facility?: string | null;
+  created_at: string;
+}
+
+// --- Triage (F1) ---
+
+export type TriagePriority = "low" | "medium" | "high";
+export type TriageRecommendation = "visit_phc" | "schedule_specialist" | "emergency";
+
+export interface TriageResult {
+  id: string;
+  patient_id: string;
+  priority: TriagePriority;
+  recommendation: TriageRecommendation;
+  rationale: Record<string, unknown>;
+  message?: string | null;
+  lang: string;
+  engine_version: string;
+  created_at: string;
+  disclaimer?: string;
+}
+
+export interface TriageRequest {
+  symptoms: string[];
+  age?: number | null;
+  existing_conditions?: string[];
+  document_ids?: string[];
+}
+
+// --- Appointments (F2) ---
+
+export type AppointmentStatus =
+  | "requested"
+  | "accepted"
+  | "confirmed"
+  | "completed"
+  | "declined"
+  | "cancelled";
+
+export interface Appointment {
+  id: string;
+  patient_id: string;
+  provider_id?: string | null;
+  specialty: string;
+  status: AppointmentStatus;
+  scheduled_for?: string | null;
+  consult_room?: string | null;
+  referral_id?: string | null;
+  triage_id?: string | null;
+  notes?: string | null;
+  requested_at: string;
+  created_at: string;
+  updated_at: string;
+  provider_name?: string | null;
+  provider_specialty?: string | null;
+}
+
+// --- Vitals (F5) ---
+
+export type VitalType = "blood_pressure" | "blood_sugar" | "spo2" | "heart_rate";
+
+export interface VitalReading {
+  id: string;
+  patient_id: string;
+  vital_type: VitalType;
+  value: Record<string, unknown>;
+  unit: string;
+  measured_at: string;
+  source: string;
+  created_at: string;
+  flag?: string | null;
+  flag_message?: string | null;
+}
+
+export interface VitalsSummary {
+  patient_id: string;
+  latest: Partial<Record<VitalType, VitalReading>>;
+  trends: Partial<Record<VitalType, Trend>>;
+}
+
+// --- Health worker (F4) ---
+
+export interface HealthWorkerRecord {
+  id: string;
+  display_name?: string | null;
+  facility_type?: string | null;
+  facility_name?: string | null;
+  district?: string | null;
+  created_at: string;
+}
+
+export interface AssignedPatient {
+  id: string;
+  display_name?: string | null;
+  lang_pref: string;
+  is_rural?: boolean;
+  assigned_at: string;
+}
+
+// --- Admin analytics (F6) ---
+
+export interface AnalyticsOverview {
+  consultations_completed: number;
+  rural_patients: number;
+  total_patients: number;
+  languages: Array<{ lang_pref: string; count: number }>;
+  referral_completion_rate: number;
+  high_priority_triage: number;
+  avg_consultation_minutes?: number | null;
+}
+
+// --- Access audit ---
+
+export interface AccessLogEntry {
+  id: string;
+  actor_role: string;
+  action: string;
+  resource: string;
+  created_at: string;
 }

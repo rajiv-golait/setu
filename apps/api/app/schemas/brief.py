@@ -76,3 +76,4 @@ class DoctorBriefDTO(BaseModel):
     referral_reason: str | None = None
     specialist_type: str | None = None
     priority: BriefPriority | None = None
+    consult_room: str | None = None  # deterministic Jitsi room (client-side embed)

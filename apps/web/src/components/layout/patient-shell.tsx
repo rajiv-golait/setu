@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 
-const HIDE_NAV = ["/upload", "/progress"];
+const HIDE_NAV = ["/upload", "/progress", "/appointments/new", "/triage"];
 
 export function PatientShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

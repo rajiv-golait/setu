@@ -3,22 +3,31 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Patient
 from app.db.session import get_db
+from app.deps import _check_patient_access, get_auth_user_id
 from app.errors import NOT_FOUND, AppError, not_found
 from app.schemas.share import ShareCreateRequest, ShareDTO, ShareSnapshotDTO
 from app.services import persistence
+from app.services.audit import log_access
+from app.services.esanjeewani_export import brief_to_esanjeewani_text
+from app.services.fhir_export import brief_to_fhir_bundle
 from app.services.memory.persistence import load_current_truth
 from app.services.sharing import build_snapshot, make_qr_svg, share_url
 
 router = APIRouter(tags=["shares"])
 
 
-async def _fetch_share_snapshot(db: AsyncSession, token: str) -> ShareSnapshotDTO:
+async def _fetch_share_snapshot(
+    db: AsyncSession,
+    token: str,
+    *,
+    request: Request | None = None,
+    audit_view: bool = False,
+) -> ShareSnapshotDTO:
     row = await persistence.get_share(db, token)
     if row is None:
         raise not_found("Share", token)
@@ -28,6 +37,17 @@ async def _fetch_share_snapshot(db: AsyncSession, token: str) -> ShareSnapshotDT
             expires = expires.replace(tzinfo=timezone.utc)
         if expires < datetime.now(timezone.utc):
             raise AppError(NOT_FOUND, "Share has expired", details={"token": token}, retryable=False)
+
+    if audit_view:
+        await log_access(
+            db,
+            actor_id=None,
+            actor_role="public",
+            patient_id=row.patient_id,
+            resource="brief",
+            action="view",
+            request=request,
+        )
 
     row.view_count = (row.view_count or 0) + 1
     await db.commit()
@@ -40,12 +60,12 @@ def _with_audience(snapshot: ShareSnapshotDTO, view: str | None) -> ShareSnapsho
 
 
 @router.post("/shares", response_model=ShareDTO, status_code=201)
-async def create_share(body: ShareCreateRequest, db: AsyncSession = Depends(get_db)) -> ShareDTO:
-    patient = (
-        await db.execute(select(Patient).where(Patient.id == body.patient_id))
-    ).scalar_one_or_none()
-    if patient is None:
-        raise not_found("Patient", body.patient_id)
+async def create_share(
+    body: ShareCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> ShareDTO:
+    patient = await _check_patient_access(body.patient_id, db, auth_user_id)
 
     brief = await persistence.latest_brief(db, body.patient_id)
     if brief is None:
@@ -87,9 +107,32 @@ async def get_share(token: str, db: AsyncSession = Depends(get_db)) -> ShareSnap
 @router.get("/brief/{token}", response_model=ShareSnapshotDTO)
 async def get_brief_snapshot(
     token: str,
+    request: Request,
     view: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> ShareSnapshotDTO:
     """PUBLIC — same frozen snapshot as /shares/{token}; ?view=specialist echoes audience."""
-    snapshot = await _fetch_share_snapshot(db, token)
+    snapshot = await _fetch_share_snapshot(db, token, request=request, audit_view=True)
     return _with_audience(snapshot, view)
+
+
+@router.get("/brief/{token}/fhir")
+async def get_public_brief_fhir(token: str, db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    """PUBLIC — FHIR Bundle for a frozen share snapshot."""
+    snapshot = await _fetch_share_snapshot(db, token)
+    bundle = brief_to_fhir_bundle(
+        snapshot.brief,
+        truth=snapshot.current_truth,
+        patient_display=snapshot.patient_ref,
+    )
+    return JSONResponse(content=bundle)
+
+
+@router.get("/brief/{token}/exports/esanjeewani")
+async def get_public_brief_esanjeewani(
+    token: str, db: AsyncSession = Depends(get_db)
+) -> PlainTextResponse:
+    """PUBLIC — eSanjeevani-formatted text for a frozen share snapshot."""
+    snapshot = await _fetch_share_snapshot(db, token)
+    text = brief_to_esanjeewani_text(snapshot.brief, patient_label=snapshot.patient_ref)
+    return PlainTextResponse(content=text)

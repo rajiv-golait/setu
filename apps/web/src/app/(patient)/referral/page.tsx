@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, UserCheck } from "lucide-react";
+import { Check, FileText, UserCheck } from "lucide-react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { createReferral, getBrief } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
+import type { DoctorBrief } from "@/lib/types";
 
 const SPECIALTIES = [
   "General Physician",
@@ -21,6 +22,7 @@ const SPECIALTIES = [
 export default function ReferralPage() {
   const router = useRouter();
   const { patient, ready } = usePatient();
+  const [brief, setBrief] = useState<DoctorBrief | null>(null);
   const [specialty, setSpecialty] = useState("Endocrinologist");
   const [reason, setReason] = useState("");
   const [done, setDone] = useState(false);
@@ -30,6 +32,7 @@ export default function ReferralPage() {
   useEffect(() => {
     if (!ready || !patient?.id) return;
     getBrief(patient.id).then((b) => {
+      setBrief(b);
       setReason(b.referral_reason ?? b.chief_concern ?? "");
       if (b.specialist_type) setSpecialty(b.specialist_type);
     });
@@ -76,6 +79,29 @@ export default function ReferralPage() {
           Suggested: <strong>{specialty}</strong> based on your latest labs
         </p>
       </div>
+
+      {brief && (
+        <div className="mb-5 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#EEF4F0]">
+              <FileText className="h-5 w-5 text-primary" strokeWidth={1.7} aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">
+                Attached brief
+              </p>
+              <p className="mt-1 text-[15px] font-semibold leading-snug">{brief.one_line}</p>
+              <p className="mt-1 text-sm text-text-muted line-clamp-2">{brief.chief_concern}</p>
+              {brief.source_documents.length > 0 && (
+                <p className="mt-2 text-xs text-text-faint">
+                  {brief.source_documents.length} source document
+                  {brief.source_documents.length === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <label className="text-[13px] font-semibold uppercase tracking-wide text-[#3D4A42]">
         Specialty

@@ -1,11 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check } from "lucide-react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { uploadDocument } from "@/lib/api";
+import { compressImage, wasCompressed } from "@/lib/image-compress";
+import { enqueueUpload } from "@/lib/offline-queue";
 import { usePatient } from "@/lib/hooks/use-patient";
+import { formatFileSize, mimeLabel, saveUploadMeta } from "@/lib/upload-meta";
 
 const DOC_TYPES = ["Lab report", "Prescription", "Discharge summary"] as const;
 
@@ -14,8 +17,23 @@ export default function UploadPage() {
   const { patient, ensurePatient } = usePatient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [docType, setDocType] = useState<(typeof DOC_TYPES)[number]>("Lab report");
   const [uploading, setUploading] = useState(false);
+  const [compressed, setCompressed] = useState(false);
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPreviewUrl(null);
+  }, [file]);
 
   const onFile = (f: File | null) => {
     if (!f) return;
@@ -31,7 +49,28 @@ export default function UploadPage() {
     setUploading(true);
     try {
       const p = patient ?? (await ensurePatient());
-      const { job_id } = await uploadDocument(p.id, file);
+      const prepared = await compressImage(file);
+      setCompressed(wasCompressed(file, prepared));
+      saveUploadMeta({
+        fileName: prepared.name,
+        size: prepared.size,
+        mime: prepared.type || "application/octet-stream",
+      });
+
+      if (!navigator.onLine) {
+        await enqueueUpload({
+          id: crypto.randomUUID(),
+          patientId: p.id,
+          blob: prepared,
+          docType,
+          filename: prepared.name,
+        });
+        alert("Saved offline — will upload when you're back online.");
+        router.push("/");
+        return;
+      }
+
+      const { job_id } = await uploadDocument(p.id, prepared, docType);
       router.push(`/progress/${job_id}`);
     } catch (e) {
       alert(e instanceof Error ? e.message : "Upload failed");
@@ -52,14 +91,19 @@ export default function UploadPage() {
       <h1 className="text-[23px] font-semibold">Review photo</h1>
       <p className="text-sm text-text-muted">Is it clear and readable?</p>
 
-      <div className="mt-5 flex aspect-[4/5] items-center justify-center rounded-[14px] border border-[#D8E0DA] bg-[repeating-linear-gradient(45deg,#F4F8F5,#F4F8F5_8px,#EEF4F0_8px,#EEF4F0_16px)]">
-        {file ? (
-          <span className="flex items-center gap-2 rounded-full bg-success-bg px-3 py-1.5 text-sm font-semibold text-success">
+      <div className="relative mt-5 flex aspect-[4/5] items-center justify-center overflow-hidden rounded-[14px] border border-[#D8E0DA] bg-[repeating-linear-gradient(45deg,#F4F8F5,#F4F8F5_8px,#EEF4F0_8px,#EEF4F0_16px)]">
+        {previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={previewUrl} alt="Document preview" className="h-full w-full object-contain" />
+        ) : file?.type === "application/pdf" ? (
+          <span className="text-sm font-semibold text-primary">PDF ready to upload</span>
+        ) : null}
+        {file && (
+          <span className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-success-bg px-3 py-1.5 text-sm font-semibold text-success shadow-card">
             <Check className="h-4 w-4" /> Looks clear
           </span>
-        ) : (
-          <span className="text-sm text-text-muted">No file selected</span>
         )}
+        {!file && <span className="text-sm text-text-muted">No file selected</span>}
       </div>
 
       <input
@@ -72,7 +116,12 @@ export default function UploadPage() {
 
       {file && (
         <p className="mt-3 text-sm text-text-muted">
-          {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB · within 15 MB limit
+          {file.name} · {formatFileSize(file.size)} · {mimeLabel(file.type || "")} · within 15 MB limit
+          {compressed && (
+            <span className="ml-2 rounded-full bg-info-bg px-2 py-0.5 text-xs font-semibold text-info">
+              Compressed for slow network
+            </span>
+          )}
         </p>
       )}
 

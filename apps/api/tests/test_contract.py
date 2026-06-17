@@ -27,6 +27,9 @@ def test_endpoint_surface_present():
     expected = {
         "/api/v1/patients",
         "/api/v1/patients/{patient_id}",
+        "/api/v1/patients/{patient_id}/access-log",
+        "/api/v1/patients/{patient_id}/vitals",
+        "/api/v1/patients/{patient_id}/vitals/summary",
         "/api/v1/documents",
         "/api/v1/documents/{document_id}",
         "/api/v1/jobs/{job_id}",
@@ -37,6 +40,10 @@ def test_endpoint_surface_present():
         "/api/v1/shares/{token}",
         "/api/v1/brief/{token}",
         "/api/v1/referrals",
+        "/api/v1/consent/withdraw",
+        "/api/v1/workers/me",
+        "/api/v1/workers/patients",
+        "/api/v1/admin/analytics/overview",
     }
     missing = expected - set(paths)
     assert not missing, f"missing endpoints: {missing}"

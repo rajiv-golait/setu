@@ -40,8 +40,8 @@ from app.seed.fixtures import (
     DEMO_SHARE_TOKEN,
     SEEDED_ONE_LINE,
     SEEDED_PRIORITY,
-    SEEDED_REFERRED_BY,
     SEEDED_REFERRAL_REASON,
+    SEEDED_REFERRED_BY,
     SEEDED_SPECIALIST_TYPE,
     demo_claims,
 )

@@ -78,3 +78,27 @@ async def test_unknown_patient_is_not_found(client):
     r = await client.get("/api/v1/patients/pat_missing")
     assert r.status_code == 404
     assert r.json()["error"]["code"] == "NOT_FOUND"
+
+
+async def test_brief_exports_fhir_and_esanjeewani(client, session_factory):
+    pid = "pat_exports"
+    await _seed_claims(session_factory, pid)
+    await client.post(f"/api/v1/patients/{pid}/brief")
+
+    r = await client.get(f"/api/v1/patients/{pid}/brief/fhir")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["bundle"]["resourceType"] == "Bundle"
+
+    r = await client.get(f"/api/v1/patients/{pid}/brief/exports/esanjeewani")
+    assert r.status_code == 200
+    assert "eSanjeevani" in r.json()["text"]
+
+    r = await client.post("/api/v1/shares", json={"patient_id": pid})
+    token = r.json()["token"]
+    r = await client.get(f"/api/v1/brief/{token}/fhir")
+    assert r.status_code == 200
+    assert r.json()["resourceType"] == "Bundle"
+    r = await client.get(f"/api/v1/brief/{token}/exports/esanjeewani")
+    assert r.status_code == 200
+    assert "Chief complaint" in r.text

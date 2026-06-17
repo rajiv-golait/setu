@@ -16,6 +16,7 @@
   }
 
   .font-devanagari {
+    font-family: var(--font-noto-devanagari), var(--font-ibm-plex), sans-serif;
     line-height: 1.8;
     letter-spacing: 0;
   }
@@ -29,4 +30,19 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes setu-shimmer {
+  0% {
+    background-position: -260px 0;
+  }
+  100% {
+    background-position: 260px 0;
+  }
+}
+
+.animate-setu-shimmer {
+  background: linear-gradient(90deg, #e8e8e2 25%, #f4f4ef 50%, #e8e8e2 75%);
+  background-size: 520px 100%;
+  animation: setu-shimmer 1.4s infinite linear;
 }

@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_Devanagari } from "next/font/google";
+import { PatientProvider } from "@/lib/hooks/use-patient";
+import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
+import { LocaleHtmlLang } from "@/components/layout/locale-html-lang";
 import "./globals.css";
 
 const ibmPlex = IBM_Plex_Sans({
@@ -27,6 +30,8 @@ export const metadata: Metadata = {
   title: "Setu — a bridge to your doctor",
   description: "Understand medical documents in your language. Share a doctor-ready brief.",
   icons: { icon: "/icon.svg" },
+  manifest: "/manifest.json",
+  appleWebApp: { capable: true, title: "Setu" },
 };
 
 export const viewport: Viewport = {
@@ -41,7 +46,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${ibmPlex.variable} ${ibmMono.variable} ${notoDevanagari.variable} font-sans`}
       >
-        {children}
+        <PatientProvider>
+          <LocaleHtmlLang />
+          <ServiceWorkerRegister />
+          {children}
+        </PatientProvider>
       </body>
     </html>
   );

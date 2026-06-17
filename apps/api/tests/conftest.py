@@ -3,6 +3,11 @@ with zero external services. Mock providers keep it GPU-free.
 """
 from __future__ import annotations
 
+import os
+
+# Satisfy required DATABASE_URL before app.config loads (tests use SQLite via monkeypatch).
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@127.0.0.1:1/unused")
+
 import json
 
 import pytest
@@ -24,6 +29,24 @@ class FakeRedis:
 
     async def get(self, key):  # noqa: ANN001
         return self._store.get(key)
+
+
+@pytest.fixture(autouse=True)
+def _use_mock_ai_for_tests(monkeypatch):
+    """Tests use mock AI directly — live path must not silently fall back to seed data."""
+    from app import config
+
+    monkeypatch.setattr(config.settings, "EXTRACTION_PROVIDER", "mock")
+    monkeypatch.setattr(config.settings, "REASONING_PROVIDER", "mock")
+
+
+@pytest.fixture(autouse=True)
+def _disable_supabase_auth(monkeypatch):
+    """Tests run in legacy anonymous mode unless a test opts into auth."""
+    from app import config
+
+    monkeypatch.setattr(config.settings, "SUPABASE_ENABLED", False)
+    monkeypatch.setattr(config.settings, "SUPABASE_JWT_SECRET", "")
 
 
 @pytest.fixture(autouse=True)

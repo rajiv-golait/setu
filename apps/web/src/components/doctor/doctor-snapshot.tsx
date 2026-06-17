@@ -1,6 +1,8 @@
 import { Clock, Lock } from "lucide-react";
+import { BriefExportActions } from "@/components/brief/export-actions";
 import { PRIORITY_DISCLAIMER } from "@/lib/constants";
 import type { ShareSnapshot } from "@/lib/types";
+import { VideoConsult } from "@/components/doctor/video-consult";
 
 function formatExpiry(iso?: string | null) {
   if (!iso) return null;
@@ -66,6 +68,11 @@ export function DoctorSnapshot({
           </span>
         </div>
 
+        <p className="mb-3 rounded-lg border border-border bg-[#F8F7F2] px-3 py-2 text-[12px] text-text-muted">
+          Prepared summary for practitioner review — not a diagnosis. SETU explains uploaded documents;
+          clinical decisions remain with the treating doctor.
+        </p>
+
         {isSpecialist && (
           <div className="mb-3 rounded-card border border-primary-light/30 bg-[#EEF4F0] px-4 py-3">
             <p className="text-xs font-bold uppercase tracking-wide text-primary">
@@ -74,6 +81,7 @@ export function DoctorSnapshot({
             <p className="mt-1 text-sm text-[#2B3830]">
               Shared by the patient&apos;s local doctor for specialist review.
             </p>
+            {brief.consult_room && <VideoConsult roomName={brief.consult_room} />}
           </div>
         )}
 
@@ -85,10 +93,21 @@ export function DoctorSnapshot({
             </span>
           </div>
           <p className="mt-1 text-[13.5px] text-text-muted">{brief.one_line}</p>
+          {brief.referral_reason && (
+            <p className="mt-2 text-sm text-[#2B332D]">
+              <span className="font-semibold">Referral reason:</span> {brief.referral_reason}
+            </p>
+          )}
           {brief.referred_by && (
             <p className="mt-2 text-sm">
               <span className="font-semibold text-text">Referred by:</span>{" "}
               <span className="text-text-muted">{brief.referred_by}</span>
+            </p>
+          )}
+          {brief.source_documents.length > 0 && (
+            <p className="mt-2 text-xs text-text-faint">
+              shared by patient · {brief.source_documents.length} document
+              {brief.source_documents.length === 1 ? "" : "s"}
             </p>
           )}
           {brief.specialist_type && (
@@ -162,7 +181,8 @@ export function DoctorSnapshot({
         </div>
 
         <div className="mt-6 border-t border-border pt-4 text-center">
-          <p className="text-[12.5px] text-text-faint">
+          <BriefExportActions shareToken={token} briefId={brief.brief_id} />
+          <p className="mt-4 text-[12.5px] text-text-faint">
             This snapshot was shared by the patient and expires automatically.
           </p>
           {expires_at && (

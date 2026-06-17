@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Check, Eye } from "lucide-react";
 import { SecondaryButton } from "@/components/ui/buttons";
-import { createShare } from "@/lib/api";
+import { BriefExportActions } from "@/components/brief/export-actions";
+import { VideoConsult } from "@/components/doctor/video-consult";
+import { createShare, getBrief } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { ShareCreateResponse } from "@/lib/types";
 
 export default function SharePage() {
   const { patient, ready } = usePatient();
   const [share, setShare] = useState<ShareCreateResponse | null>(null);
+  const [consultRoom, setConsultRoom] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,8 +21,11 @@ export default function SharePage() {
   useEffect(() => {
     if (!ready || !patient?.id) return;
     setLoading(true);
-    createShare(patient.id)
-      .then(setShare)
+    Promise.all([createShare(patient.id), getBrief(patient.id).catch(() => null)])
+      .then(([s, brief]) => {
+        setShare(s);
+        setConsultRoom(brief?.consult_room ?? null);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Could not create share"))
       .finally(() => setLoading(false));
   }, [patient?.id, ready]);
@@ -127,6 +133,18 @@ export default function SharePage() {
               Preview what the specialist sees
             </SecondaryButton>
           </Link>
+
+          {consultRoom && (
+            <div className="mt-4 rounded-card border border-primary-light/30 bg-[#EEF4F0] px-4 py-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-primary">Your consultation</p>
+              <p className="mt-1 text-sm text-[#2B3830]">
+                Use the same room when your specialist joins from the link above.
+              </p>
+              <VideoConsult roomName={consultRoom} joinLabel="Join your consultation" />
+            </div>
+          )}
+
+          <BriefExportActions shareToken={share.token} briefId={share.share_id} />
         </>
       )}
     </div>

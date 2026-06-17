@@ -1,13 +1,24 @@
 import { API_BASE } from "./constants";
 import type {
+  AccessLogEntry,
+  AnalyticsOverview,
+  Appointment,
+  AssignedPatient,
   CurrentTruth,
   DoctorBrief,
   DocumentListItem,
+  HealthWorkerRecord,
   JobStatus,
   PatientRecord,
   PatientSummary,
+  ProviderRecord,
+  ReminderSchedule,
   ShareCreateResponse,
   ShareSnapshot,
+  TriageRequest,
+  TriageResult,
+  VitalReading,
+  VitalsSummary,
 } from "./types";
 
 class ApiError extends Error {
@@ -22,25 +33,58 @@ class ApiError extends Error {
   }
 }
 
+type TokenProvider = () => Promise<string | null>;
+
+let tokenProvider: TokenProvider | null = null;
+
+export function setApiTokenProvider(provider: TokenProvider | null) {
+  tokenProvider = provider;
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  if (!tokenProvider) return {};
+  const token = await tokenProvider();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      Accept: "application/json",
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  const url = `${API_BASE}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...init,
+      headers: {
+        Accept: "application/json",
+        ...(await authHeaders()),
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+    });
+  } catch {
+    throw new ApiError(
+      `Cannot reach the API (${url}). Start the backend: cd apps/api && uvicorn app.main:app --reload --port 8000`,
+      "NETWORK_ERROR",
+      true,
+      0,
+    );
+  }
 
   if (!res.ok) {
-    let body: { error?: { code?: string; message?: string; retryable?: boolean } } = {};
+    let body: {
+      error?: {
+        code?: string;
+        message?: string;
+        retryable?: boolean;
+        details?: Record<string, unknown>;
+      };
+    } = {};
     try {
       body = await res.json();
     } catch {
       /* empty */
     }
     throw new ApiError(
-      body.error?.message ?? res.statusText,
+      formatApiError(body, res.statusText),
       body.error?.code,
       body.error?.retryable ?? false,
       res.status,
@@ -50,16 +94,58 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function createPatient(displayName?: string): Promise<PatientRecord> {
+function formatApiError(
+  body: { error?: { message?: string; details?: Record<string, unknown> } },
+  fallback: string,
+): string {
+  const msg = body.error?.message ?? fallback;
+  const hint = body.error?.details?.hint;
+  return typeof hint === "string" ? `${msg}. ${hint}` : msg;
+}
+
+export async function getPatientMe(): Promise<PatientRecord> {
+  return request<PatientRecord>("/patients/me");
+}
+
+export async function updatePatientMe(body: {
+  display_name?: string;
+  lang_pref?: string;
+}): Promise<PatientRecord> {
+  return request<PatientRecord>("/patients/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function createPatient(displayName?: string, langPref = "mr"): Promise<PatientRecord> {
   return request<PatientRecord>("/patients", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ display_name: displayName, lang_pref: "mr" }),
+    body: JSON.stringify({ display_name: displayName, lang_pref: langPref }),
   });
 }
 
 export async function getPatient(patientId: string): Promise<PatientRecord> {
   return request<PatientRecord>(`/patients/${patientId}`);
+}
+
+export async function grantConsent(body: {
+  patient_id: string;
+  lang: string;
+  purpose?: "document_processing";
+  channel?: "web";
+}): Promise<{ consent_id: string; granted_at: string }> {
+  return request("/consent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      patient_id: body.patient_id,
+      purpose: body.purpose ?? "document_processing",
+      lang: body.lang,
+      channel: body.channel ?? "web",
+    }),
+  });
 }
 
 export async function listDocuments(patientId: string): Promise<DocumentListItem[]> {
@@ -101,10 +187,12 @@ export async function getJob(jobId: string): Promise<JobStatus> {
 export async function uploadDocument(
   patientId: string,
   file: File,
+  docType?: string,
 ): Promise<{ document_id: string; job_id: string; status: string }> {
   const form = new FormData();
   form.append("patient_id", patientId);
   form.append("file", file);
+  if (docType) form.append("doc_type", docType);
   return request(`/documents`, { method: "POST", body: form });
 }
 
@@ -118,6 +206,228 @@ export async function createReferral(body: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+export async function getReminders(patientId: string): Promise<ReminderSchedule> {
+  return request(`/patients/${patientId}/reminders`);
+}
+
+export async function getBriefFhir(patientId: string): Promise<Record<string, unknown>> {
+  const res = await request<{ bundle: Record<string, unknown> }>(
+    `/patients/${patientId}/brief/fhir`,
+  );
+  return res.bundle;
+}
+
+export async function getEsanjeewaniExport(patientId: string): Promise<string> {
+  const res = await request<{ text: string }>(
+    `/patients/${patientId}/brief/exports/esanjeewani`,
+  );
+  return res.text;
+}
+
+export async function getPublicEsanjeewani(token: string): Promise<string> {
+  const url = `${API_BASE}/brief/${token}/exports/esanjeewani`;
+  const res = await fetch(url, { headers: { Accept: "text/plain" }, cache: "no-store" });
+  if (!res.ok) throw new ApiError("Could not load eSanjeevani export", undefined, false, res.status);
+  return res.text();
+}
+
+export async function getPublicFhirBundle(token: string): Promise<Record<string, unknown>> {
+  const url = `${API_BASE}/brief/${token}/fhir`;
+  const res = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!res.ok) throw new ApiError("Could not load FHIR export", undefined, false, res.status);
+  return res.json() as Promise<Record<string, unknown>>;
+}
+
+export async function deletePatientData(
+  patientId: string,
+): Promise<{ patient_id: string; documents: number; raw_files_purged: number }> {
+  return request(`/patients/${patientId}/data`, { method: "DELETE" });
+}
+
+// --- Provider ---
+
+export async function getProviderMe(): Promise<ProviderRecord> {
+  return request<ProviderRecord>("/providers/me");
+}
+
+export async function updateProviderMe(body: {
+  display_name?: string;
+  specialty?: string;
+  facility?: string;
+}): Promise<ProviderRecord> {
+  return request<ProviderRecord>("/providers/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+// --- Triage ---
+
+export async function runTriage(
+  patientId: string,
+  body: TriageRequest,
+): Promise<TriageResult> {
+  return request<TriageResult>(`/patients/${patientId}/triage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listTriage(patientId: string): Promise<TriageResult[]> {
+  return request<TriageResult[]>(`/patients/${patientId}/triage`);
+}
+
+// --- Appointments ---
+
+export async function createAppointment(body: {
+  patient_id: string;
+  specialty: string;
+  scheduled_for?: string;
+  referral_id?: string;
+  triage_id?: string;
+  notes?: string;
+}): Promise<Appointment> {
+  return request<Appointment>("/appointments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listAppointments(status?: string): Promise<Appointment[]> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request<Appointment[]>(`/appointments${q}`);
+}
+
+export async function patchAppointment(
+  appointmentId: string,
+  action: string,
+): Promise<Appointment> {
+  return request<Appointment>(`/appointments/${appointmentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+}
+
+// --- Vitals ---
+
+export async function createVital(
+  patientId: string,
+  body: {
+    vital_type: string;
+    value: Record<string, unknown>;
+    unit: string;
+    measured_at?: string;
+    source?: string;
+  },
+): Promise<VitalReading> {
+  return request<VitalReading>(`/patients/${patientId}/vitals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listVitals(
+  patientId: string,
+  vitalType?: string,
+): Promise<VitalReading[]> {
+  const q = vitalType ? `?vital_type=${encodeURIComponent(vitalType)}` : "";
+  return request<VitalReading[]>(`/patients/${patientId}/vitals${q}`);
+}
+
+export async function getVitalsSummary(patientId: string): Promise<VitalsSummary> {
+  return request<VitalsSummary>(`/patients/${patientId}/vitals/summary`);
+}
+
+// --- Health worker (F4) — `/workers/*` per Phase 6 API contract ---
+
+export async function getHealthWorkerMe(): Promise<HealthWorkerRecord> {
+  return request<HealthWorkerRecord>("/workers/me");
+}
+
+export async function registerPatientAsWorker(body: {
+  display_name: string;
+  phone?: string;
+  lang_pref?: string;
+  is_rural?: boolean;
+}): Promise<PatientRecord> {
+  return request<PatientRecord>("/workers/patients", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listWorkerPatients(): Promise<AssignedPatient[]> {
+  return request<AssignedPatient[]>("/workers/patients");
+}
+
+export async function proxyUploadForWorker(
+  patientId: string,
+  file: File,
+  docType?: string,
+): Promise<{ document_id: string; job_id: string; status: string }> {
+  const form = new FormData();
+  form.append("patient_id", patientId);
+  form.append("file", file);
+  if (docType) form.append("doc_type", docType);
+  return request(`/workers/patients/${patientId}/documents`, { method: "POST", body: form });
+}
+
+export async function createWorkerShare(patientId: string): Promise<ShareCreateResponse> {
+  return request<ShareCreateResponse>(`/workers/patients/${patientId}/share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({}),
+  });
+}
+
+// --- Admin analytics ---
+
+export async function getAnalyticsOverview(
+  from?: string,
+  to?: string,
+): Promise<AnalyticsOverview> {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const q = params.toString() ? `?${params}` : "";
+  return request<AnalyticsOverview>(`/admin/analytics/overview${q}`);
+}
+
+// --- Compliance ---
+
+export async function withdrawConsent(patientId: string): Promise<{ withdrawn: boolean }> {
+  return request("/consent/withdraw", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patient_id: patientId }),
+  });
+}
+
+export async function getAccessLog(patientId: string): Promise<AccessLogEntry[]> {
+  return request<AccessLogEntry[]>(`/patients/${patientId}/access-log`);
+}
+
+export async function uploadDocumentWithId(
+  patientId: string,
+  file: File,
+  docType?: string,
+  uploadId?: string,
+): Promise<{ document_id: string; job_id: string; status: string }> {
+  const form = new FormData();
+  form.append("patient_id", patientId);
+  form.append("file", file);
+  if (docType) form.append("doc_type", docType);
+  const headers: Record<string, string> = {};
+  if (uploadId) headers["X-Upload-Id"] = uploadId;
+  return request(`/documents`, { method: "POST", body: form, headers });
 }
 
 export { ApiError };

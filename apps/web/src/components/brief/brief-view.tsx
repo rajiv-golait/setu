@@ -11,6 +11,8 @@ import {
   UserCheck,
 } from "lucide-react";
 import { PrimaryButton, SecondaryButton, SectionHeader } from "@/components/ui/buttons";
+import { BriefExportActions } from "@/components/brief/export-actions";
+import { VideoConsult } from "@/components/doctor/video-consult";
 import { PRIORITY_DISCLAIMER } from "@/lib/constants";
 import type { DoctorBrief } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -97,6 +99,20 @@ export function BriefView({
         </p>
         <p className="mt-1.5 text-[13.5px] text-[#B9D2C5]">{brief.chief_concern}</p>
       </div>
+
+      <p className="mt-1 text-xs italic text-text-faint">
+        Urgent review flags are computed from objective lab values, not AI symptom guessing.
+      </p>
+
+      {brief.consult_room && (
+        <div className="mt-4 rounded-card border border-primary-light/30 bg-[#EEF4F0] px-4 py-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-primary">Video consultation</p>
+          <p className="mt-1 text-sm text-[#2B3830]">
+            Join when your specialist is ready — same room as on the shared brief link.
+          </p>
+          <VideoConsult roomName={brief.consult_room} joinLabel="Join your consultation" />
+        </div>
+      )}
 
       {/* Referral bridge context */}
       {(brief.referred_by || brief.referral_reason || brief.specialist_type) && (
@@ -324,6 +340,7 @@ export function BriefView({
 
       {showActions && (
         <>
+          <BriefExportActions patientId={brief.patient_id} briefId={brief.brief_id} />
           <Link href="/share" className="mt-5 block">
             <PrimaryButton>
               <Share2 className="h-[19px] w-[19px]" aria-hidden />

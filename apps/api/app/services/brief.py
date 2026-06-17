@@ -19,6 +19,7 @@ from app.schemas.brief import BriefFlag, BriefPriority, DoctorBriefDTO
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
 from app.services.priority import compute_priority
 from app.services.reasoning.base import ReasonerProvider
+from app.services.video import consult_room_name
 
 # Default specialist when the model does not infer one (plain dict — not AI).
 _SPECIALIST_BY_DOMINANT = {
@@ -189,8 +190,8 @@ def normalize_brief_content(content: dict) -> dict:
         for m in _as_list(content.get("active_medications"))
     ]
     out["recent_labs"] = [
-        _coerce_named_item(l, "test", ("test_name",))
-        for l in _as_list(content.get("recent_labs"))
+        _coerce_named_item(lab, "test", ("test_name",))
+        for lab in _as_list(content.get("recent_labs"))
     ]
     out["active_conditions"] = [
         _coerce_named_item(c, "condition", ("diagnosis", "name"))
@@ -240,4 +241,5 @@ async def build_brief(
         specialist_type=specialist_type,
         priority=BriefPriority.model_validate(priority_data),
     )
+    brief.consult_room = consult_room_name(patient_id, brief.brief_id)
     return brief

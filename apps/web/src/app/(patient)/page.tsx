@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Lock } from "lucide-react";
+import Link from "next/link";
+import { Camera, Lock, Calendar } from "lucide-react";
 import { SecondaryButton } from "@/components/ui/buttons";
-import { listDocuments } from "@/lib/api";
+import { ConsentPanel } from "@/components/consent/consent-panel";
+import { EmptyDocuments } from "@/components/ui/state-panel";
+import { OfflineQueueBanner } from "@/components/ui/offline-queue-banner";
+import { ConnectionBadge } from "@/components/ui/connection-badge";
+import { hasLocalConsent } from "@/lib/consent";
+import { listDocuments, getReminders } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
-import type { DocumentListItem } from "@/lib/types";
+import type { DocumentListItem, ReminderSchedule } from "@/lib/types";
 
 function docTitle(doc: DocumentListItem): string {
   const raw = doc.doc_type?.replace(/_/g, " ") ?? "Document";
@@ -19,7 +25,7 @@ function docMeta(doc: DocumentListItem): string {
     month: "short",
     year: "numeric",
   });
-  const source = doc.source === "seed" ? "Demo seed" : "Your upload";
+  const source = doc.source === "upload" ? "Your upload" : doc.source ?? "Document";
   return `${source} · ${date}`;
 }
 
@@ -44,6 +50,12 @@ export default function HomePage() {
   const { patient, ready, ensurePatient } = usePatient();
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
+  const [consentOk, setConsentOk] = useState(false);
+  const [reminders, setReminders] = useState<ReminderSchedule | null>(null);
+
+  useEffect(() => {
+    if (patient?.id && hasLocalConsent(patient.id)) setConsentOk(true);
+  }, [patient?.id]);
 
   useEffect(() => {
     if (!ready || !patient?.id) return;
@@ -52,6 +64,9 @@ export default function HomePage() {
       .then(setDocuments)
       .catch(() => setDocuments([]))
       .finally(() => setDocsLoading(false));
+    getReminders(patient.id)
+      .then(setReminders)
+      .catch(() => setReminders(null));
   }, [patient?.id, ready]);
 
   const greetingName = patient?.displayName?.split(" ")[0] ?? "there";
@@ -67,6 +82,8 @@ export default function HomePage() {
 
   return (
     <div className="animate-setu-fade px-5 pb-8 pt-5">
+      <ConnectionBadge />
+      <OfflineQueueBanner />
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
           <p className="text-[13px] text-text-muted">{today}</p>
@@ -80,6 +97,14 @@ export default function HomePage() {
       </div>
 
       <div className="rounded-hero border border-border bg-surface-raised p-5 shadow-raised">
+        {patient?.id && !consentOk ? (
+          <ConsentPanel
+            patientId={patient.id}
+            lang={patient.langPref ?? "mr"}
+            onGranted={() => setConsentOk(true)}
+          />
+        ) : (
+          <>
         <h2 className="text-[17px] font-semibold">Add a prescription or report</h2>
         <p className="mt-1 text-sm text-text-muted">
           Photograph it. We&apos;ll read it and keep a clear record.
@@ -112,9 +137,49 @@ export default function HomePage() {
         >
           Choose from gallery
         </SecondaryButton>
+          </>
+        )}
       </div>
 
-      <div className="mb-3 mt-6 flex items-center gap-2 px-1">
+      {reminders && reminders.reminders.length > 0 && (
+        <div className="mb-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Today</h2>
+          </div>
+          <ul className="mt-2 space-y-1.5 text-sm text-text-muted">
+            {reminders.reminders.slice(0, 3).map((r, i) => (
+              <li key={`${r.label}-${i}`}>· {r.label}</li>
+            ))}
+          </ul>
+          <Link href="/memory" className="mt-2 inline-block text-xs font-semibold text-primary">
+            View full schedule →
+          </Link>
+        </div>
+      )}
+
+      <div className="mb-6 flex gap-2 overflow-x-auto">
+        <Link
+          href="/triage"
+          className="shrink-0 rounded-full border border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-primary"
+        >
+          Check symptoms
+        </Link>
+        <Link
+          href="/appointments"
+          className="shrink-0 rounded-full border border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-primary"
+        >
+          Book specialist
+        </Link>
+        <Link
+          href="/vitals"
+          className="shrink-0 rounded-full border border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-primary"
+        >
+          Log vitals
+        </Link>
+      </div>
+
+      <div className="mb-3 mt-2 flex items-center gap-2 px-1">
         <span className="text-[13px] font-semibold uppercase tracking-[0.06em] text-[#3D4A42]">
           Your documents
         </span>
@@ -124,9 +189,10 @@ export default function HomePage() {
       {docsLoading && <p className="text-sm text-text-faint">Loading documents…</p>}
 
       {!docsLoading && documents.length === 0 && (
-        <p className="rounded-card border border-border bg-surface-raised p-4 text-sm text-text-muted">
-          No documents yet. Upload a prescription or lab report to get started.
-        </p>
+        <EmptyDocuments onUpload={async () => {
+          await ensurePatient();
+          router.push("/upload");
+        }} />
       )}
 
       <div className="flex flex-col gap-2.5">
@@ -157,9 +223,14 @@ export default function HomePage() {
         })}
       </div>
 
-      <div className="mt-5 flex items-start gap-2 px-0.5 text-[13px] text-text-muted">
-        <Lock className="mt-0.5 h-[15px] w-[15px] shrink-0 text-primary-light" strokeWidth={1.8} />
-        <span>Your reports stay private. They&apos;re shared only when you choose to.</span>
+      <div className="mt-5 flex flex-col gap-2 px-0.5">
+        <div className="flex items-start gap-2 text-[13px] text-text-muted">
+          <Lock className="mt-0.5 h-[15px] w-[15px] shrink-0 text-primary-light" strokeWidth={1.8} />
+          <span>Your reports stay private. They&apos;re shared only when you choose to.</span>
+        </div>
+        <Link href="/settings" className="text-[13px] font-semibold text-primary">
+          Privacy & delete my data
+        </Link>
       </div>
     </div>
   );
