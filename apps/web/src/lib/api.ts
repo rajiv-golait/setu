@@ -8,6 +8,7 @@ import type {
   CurrentTruth,
   DoctorBrief,
   DocumentListItem,
+  Encounter,
   HealthWorkerRecord,
   JobStatus,
   PatientRecord,
