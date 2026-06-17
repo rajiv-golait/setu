@@ -1,15 +1,15 @@
 """Availability and slot routes."""
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import Provider
 from app.db.session import get_db
 from app.deps import require_approved_provider, require_provider
-from app.db.models import Provider
 from app.services import scheduling as sched
 
 router = APIRouter(prefix="/providers", tags=["scheduling"])

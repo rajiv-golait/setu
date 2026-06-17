@@ -25,12 +25,6 @@ from app.routers import analytics_router as analytics
 from app.routers import appointments_router as appointments
 from app.routers import auth_router as auth
 from app.routers import availability_router as availability
-from app.routers import encounters_router as encounters
-from app.routers import fhir_gateway_router as fhir_gateway
-from app.routers import notifications_router as notifications
-from app.routers import support_router as support
-from app.routers import symptom_chat_router as symptom_chat
-from app.routers import timeline_router as timeline
 from app.routers import (
     brief,
     consent,
@@ -46,7 +40,13 @@ from app.routers import (
     telegram,
     webchat,
 )
+from app.routers import encounters_router as encounters
+from app.routers import fhir_gateway_router as fhir_gateway
 from app.routers import health_worker_router as workers
+from app.routers import notifications_router as notifications
+from app.routers import support_router as support
+from app.routers import symptom_chat_router as symptom_chat
+from app.routers import timeline_router as timeline
 from app.routers import triage_router as triage
 from app.routers import vitals_router as vitals
 

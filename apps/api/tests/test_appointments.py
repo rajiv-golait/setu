@@ -306,7 +306,6 @@ async def test_reschedule_releases_and_rebooks_slot(client, session_factory, aut
     from datetime import datetime, timedelta, timezone
 
     from app.db.models import AppointmentSlot
-
     from app.ids import new_id
 
     patient_id = "pat_rs"

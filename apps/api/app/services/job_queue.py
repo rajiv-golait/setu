@@ -5,7 +5,6 @@ import json
 import logging
 
 from app import jobs_store
-from app.config import settings
 
 logger = logging.getLogger("setu.job_queue")
 

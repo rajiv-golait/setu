@@ -11,8 +11,8 @@ from app.db.models import Appointment, Encounter, Patient, Provider, ProviderCre
 from app.db.session import get_db
 from app.deps import (
     get_auth_user_id,
-    require_auth_user_id,
     require_approved_provider,
+    require_auth_user_id,
     require_provider,
     require_provider_patient_access,
 )
@@ -27,9 +27,8 @@ from app.schemas.provider import (
     ProviderRegisterRequest,
     ProviderUpdateRequest,
 )
-from app.services import ingestion, persistence
+from app.services import ingestion, persistence, supabase_admin
 from app.services.audit_phi import audit_phi_read
-from app.services import supabase_admin
 
 router = APIRouter(prefix="/providers", tags=["providers"])
 

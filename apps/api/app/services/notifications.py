@@ -9,7 +9,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.db.models import InAppNotification, NotificationOutbox, NotificationPreference, Patient, Provider
+from app.db.models import (
+    InAppNotification,
+    NotificationOutbox,
+    NotificationPreference,
+    Patient,
+    Provider,
+)
 from app.ids import new_id
 
 logger = logging.getLogger("setu.notifications")

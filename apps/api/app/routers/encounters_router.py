@@ -8,16 +8,14 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import ClinicalNote, Encounter, Prescription, Provider
+from app.db.models import ClinicalNote, Encounter, Patient, Prescription, Provider
 from app.db.session import get_db
 from app.deps import (
     get_auth_user_id,
     get_user_role,
     require_approved_provider,
-    require_patient_access,
     require_provider_patient_access,
 )
-from app.db.models import Patient
 from app.errors import FORBIDDEN, AppError, not_found
 from app.services import encounters as enc_svc
 from app.services import notifications as notify_svc

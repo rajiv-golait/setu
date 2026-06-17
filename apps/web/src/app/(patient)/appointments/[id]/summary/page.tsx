@@ -64,17 +64,18 @@ export default function VisitSummaryPage() {
               <ul key={rx.id} className="mt-2 space-y-2">
                 {meds.map((item, i) => {
                   const row = item as Record<string, string>;
-                return (
-                  <li
-                    key={i}
-                    className="rounded-card border border-border bg-surface-raised p-4 text-sm"
-                  >
-                    <p className="font-semibold">{row.name ?? "Medicine"}</p>
-                    <p className="text-text-muted">
-                      {[row.dose, row.frequency, row.duration].filter(Boolean).join(" · ")}
-                    </p>
-                    {row.instructions && <p className="mt-1">{row.instructions}</p>}
-                  </li>
+                  return (
+                    <li
+                      key={i}
+                      className="rounded-card border border-border bg-surface-raised p-4 text-sm"
+                    >
+                      <p className="font-semibold">{row.name ?? "Medicine"}</p>
+                      <p className="text-text-muted">
+                        {[row.dose, row.frequency, row.duration].filter(Boolean).join(" · ")}
+                      </p>
+                      {row.instructions && <p className="mt-1">{row.instructions}</p>}
+                    </li>
+                  );
                 })}
               </ul>
             );

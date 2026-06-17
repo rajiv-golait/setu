@@ -165,7 +165,7 @@ async def appointment_visit_summary(
     auth_user_id: str | None = Depends(get_auth_user_id),
 ):
     from app.db.models import Encounter
-    from app.routers.encounters_router import EncounterSummaryDTO, _build_summary
+    from app.routers.encounters_router import _build_summary
 
     appt = await svc.get(db, appointment_id)
     provider: Provider | None = None

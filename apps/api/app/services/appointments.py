@@ -25,9 +25,9 @@ from app.db.models import Reminder as ReminderRow
 from app.errors import FORBIDDEN, VALIDATION_ERROR, AppError, not_found
 from app.ids import new_id
 from app.schemas.appointments import ALLOWED_TRANSITIONS, AppointmentStatus
-from app.services import scheduling as sched_svc
 from app.services import encounters as enc_svc
 from app.services import notifications as notify_svc
+from app.services import scheduling as sched_svc
 from app.services.video import consult_room_name
 
 
