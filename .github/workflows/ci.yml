@@ -22,6 +22,8 @@ jobs:
       - name: Ruff
         run: ruff check app/ tests/
       - name: Pytest
+        env:
+          STORAGE_PATH: /tmp/setu-uploads
         run: pytest -q
 
   web:

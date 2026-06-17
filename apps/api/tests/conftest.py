@@ -50,6 +50,16 @@ def _disable_supabase_auth(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _writable_storage_path(tmp_path, monkeypatch):
+    """CI and local dev may default STORAGE_PATH to /data/uploads (not writable)."""
+    from app import config
+
+    upload_dir = tmp_path / "uploads"
+    upload_dir.mkdir(exist_ok=True)
+    monkeypatch.setattr(config.settings, "STORAGE_PATH", str(upload_dir))
+
+
+@pytest.fixture(autouse=True)
 def _patch_redis(monkeypatch):
     fake = FakeRedis()
     from app import jobs_store
