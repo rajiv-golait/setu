@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import jobs_store
+from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.errors import not_found

@@ -19,7 +19,7 @@ async def send_push(endpoint: str, p256dh: str, auth: str, *, title: str, body: 
 
     def _send() -> bool:
         try:
-            from pywebpush import WebPusher, webpush
+            from pywebpush import webpush
 
             webpush(
                 subscription_info={

@@ -86,8 +86,9 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(reminder_push_loop())
     # Ensure push_subscriptions table exists (idempotent — migration may not have run yet).
     try:
-        from app.db.session import SessionLocal
         from sqlalchemy import text as _text
+
+        from app.db.session import SessionLocal
         async with SessionLocal() as _db:
             await _db.execute(_text(
                 "CREATE TABLE IF NOT EXISTS push_subscriptions ("

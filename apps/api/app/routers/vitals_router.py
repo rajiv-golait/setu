@@ -4,7 +4,6 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.models import Patient
 from app.db.session import get_db
 from app.deps import (

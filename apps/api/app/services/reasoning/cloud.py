@@ -16,11 +16,12 @@ from __future__ import annotations
 import json
 import logging
 
+from app.config import settings
 from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
 from app.services.gemini_client import generate_content_with_fallback
 from app.services.gemini_models import GEMINI_DEFAULT_MODEL
 from app.services.reasoning.base import ReasonerProvider
-from app.services.safety import DISCLAIMER, append_disclaimer
+from app.services.safety import append_disclaimer
 
 logger = logging.getLogger("setu.gemini")
 

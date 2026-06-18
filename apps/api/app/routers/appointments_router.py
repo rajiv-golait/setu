@@ -220,7 +220,6 @@ async def appointment_patient_context(
     auth_user_id: str | None = Depends(get_auth_user_id),
 ) -> dict:
     """Provider-only: load CurrentTruth + latest brief for the appointment's patient."""
-    from app.schemas.memory import CurrentTruthDTO
     from app.services import persistence
     from app.services.memory.persistence import load_current_truth
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks
 
 from app import jobs_store
 from app.config import settings
-from app.errors import NOT_FOUND, VALIDATION_ERROR, AppError, not_found
+from app.errors import VALIDATION_ERROR, AppError, not_found
 from app.schemas.jobs import JobStatusDTO
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])

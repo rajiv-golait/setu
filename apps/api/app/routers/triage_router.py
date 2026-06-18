@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.db.models import Patient
 from app.db.models import TriageResult as TriageRow
 from app.db.session import get_db
