@@ -14,6 +14,7 @@ import {
   getEncounter,
 } from "@/lib/api";
 import { PrescriptionBuilder } from "@/components/doctor/prescription-builder";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function DoctorConsultationPage() {
   const { id } = useParams<{ id: string }>();
@@ -61,8 +62,10 @@ export default function DoctorConsultationPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Consultation</h1>
-      {status && <p className="mt-1 text-sm capitalize text-text-muted">Status: {status}</p>}
+      <PageHeader
+        title="Consultation"
+        subtitle={status ? `Status: ${status}` : undefined}
+      />
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
         <div>
           {room && (

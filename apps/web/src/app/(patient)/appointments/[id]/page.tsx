@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useParams } from "next/navigation";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { CancelDialog } from "@/components/appointments/cancel-dialog";
 import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { getAppointment, doctorAppointmentAction } from "@/lib/api";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
 export default function PatientAppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
@@ -49,17 +48,17 @@ export default function PatientAppointmentDetailPage() {
   const canModify = ["requested", "accepted", "confirmed"].includes(appt.status);
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-4">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <h1 className="text-xl font-semibold">{appt.specialty}</h1>
-      <p className="mt-1 capitalize text-sm text-text-muted">Status: {appt.status}</p>
+    <div className="px-5 pb-8 pt-4">
+      <ScreenHeader
+        mode="toolbar"
+        backHref="/appointments"
+        title={appt.specialty}
+        trailing={
+          <span className="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-semibold capitalize text-text-muted">
+            {appt.status}
+          </span>
+        }
+      />
       {actionError && <p className="mt-2 text-sm text-danger">{actionError}</p>}
 
       {appt.status === "completed" && (

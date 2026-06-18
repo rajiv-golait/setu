@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { TriageResultCard } from "@/components/triage/triage-result-card";
 import { listTriage, runTriage, symptomChatTriage } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
@@ -85,9 +86,8 @@ export default function TriagePage() {
   };
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-5">
-      <h1 className="text-[23px] font-semibold">{t("triage.title")}</h1>
-      <p className="mt-1 text-sm text-text-muted">{t("triage.subtitle")}</p>
+    <div className="px-5 pb-8 pt-5">
+      <ScreenHeader title={t("triage.title")} subtitle={t("triage.subtitle")} />
 
       <div className="mt-4 flex gap-2">
         {STEPS.map((label, i) => (
@@ -209,9 +209,7 @@ export default function TriagePage() {
 
       {history.length > 1 && (
         <div className="mt-8 space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Recent guidance
-          </h2>
+          <h2 className="font-display text-sm font-semibold text-text">Recent guidance</h2>
           {history.slice(1).map((r) => (
             <TriageResultCard key={r.id} result={r} />
           ))}

@@ -58,9 +58,15 @@ async def pipeline_worker_loop() -> None:
         "pipeline worker started (concurrency=%s)",
         settings.PIPELINE_WORKER_CONCURRENCY,
     )
+    failures = 0
+    backoff = 1.0
     while True:
         try:
             payload = await dequeue_pipeline(timeout_seconds=5)
+            if failures:
+                logger.info("pipeline queue reachable again after %s failed attempt(s)", failures)
+                failures = 0
+                backoff = 1.0
             if payload is None:
                 await asyncio.sleep(0.25)
                 continue
@@ -68,5 +74,16 @@ async def pipeline_worker_loop() -> None:
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
-            logger.exception("pipeline worker error: %s", exc)
-            await asyncio.sleep(1)
+            failures += 1
+            # Redis being down (e.g. not running in local dev) would otherwise log on
+            # every poll. Warn on the first failure with an actionable hint, then stay
+            # quiet and back off exponentially until it recovers.
+            if failures == 1:
+                logger.warning(
+                    "pipeline queue unavailable: %s — uploads will not process until "
+                    "Redis is reachable at %s. Start Redis, or ignore if intentional.",
+                    exc,
+                    settings.REDIS_URL,
+                )
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 30.0)

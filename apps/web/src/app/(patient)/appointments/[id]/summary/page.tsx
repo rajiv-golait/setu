@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { useParams } from "next/navigation";
 import { getAppointmentVisitSummary } from "@/lib/api";
 import type { VisitSummary } from "@/lib/api";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { WarmCard } from "@/components/ui/warm-card";
 
 export default function VisitSummaryPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [summary, setSummary] = useState<VisitSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -24,26 +25,23 @@ export default function VisitSummaryPage() {
   if (!summary) return <p className="p-8 text-center text-sm text-danger">Summary not available yet.</p>;
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-4">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <h1 className="text-xl font-semibold">Visit summary</h1>
-      <p className="mt-1 text-sm capitalize text-text-muted">Status: {summary.status}</p>
+    <div className="px-5 pb-8 pt-4">
+      <BackLink />
+      <PageHeader
+        title="Visit summary"
+        subtitle={`Status: ${summary.status}`}
+      />
 
       {summary.notes.length > 0 && (
         <section className="mt-6">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Notes</h2>
           <ul className="mt-2 space-y-3">
             {summary.notes.map((n, i) => (
-              <li key={i} className="rounded-card border border-border bg-surface-raised p-4 text-sm">
-                <p className="text-xs font-semibold uppercase text-primary">{n.note_type}</p>
-                <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
+              <li key={i}>
+                <WarmCard className="text-sm">
+                  <p className="text-xs font-semibold uppercase text-primary">{n.note_type}</p>
+                  <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
+                </WarmCard>
               </li>
             ))}
           </ul>
@@ -65,15 +63,14 @@ export default function VisitSummaryPage() {
                 {meds.map((item, i) => {
                   const row = item as Record<string, string>;
                   return (
-                    <li
-                      key={i}
-                      className="rounded-card border border-border bg-surface-raised p-4 text-sm"
-                    >
-                      <p className="font-semibold">{row.name ?? "Medicine"}</p>
-                      <p className="text-text-muted">
-                        {[row.dose, row.frequency, row.duration].filter(Boolean).join(" · ")}
-                      </p>
-                      {row.instructions && <p className="mt-1">{row.instructions}</p>}
+                    <li key={i}>
+                      <WarmCard className="text-sm">
+                        <p className="font-semibold">{row.name ?? "Medicine"}</p>
+                        <p className="text-text-muted">
+                          {[row.dose, row.frequency, row.duration].filter(Boolean).join(" · ")}
+                        </p>
+                        {row.instructions && <p className="mt-1">{row.instructions}</p>}
+                      </WarmCard>
                     </li>
                   );
                 })}

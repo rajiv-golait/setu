@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Video } from "lucide-react";
 import { RequestQueueCard } from "@/components/doctor/request-queue-card";
 import { DoctorStatPills } from "@/components/doctor/doctor-stat-pills";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { FlushList, FlushListItem } from "@/components/ui/data-table";
 import { formatDoctorName, formatWhen, isToday, patientLabel } from "@/lib/doctor-utils";
 import {
   getProviderDashboard,
@@ -119,14 +122,12 @@ export default function DoctorDashboardView() {
   });
 
   return (
-    <div className="animate-setu-fade">
+    <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{formatDoctorName(provider?.display_name)}</h1>
-          {provider?.specialty && (
-            <p className="text-sm text-text-muted">{provider.specialty}</p>
-          )}
-        </div>
+        <ScreenHeader
+          title={formatDoctorName(provider?.display_name)}
+          subtitle={provider?.specialty ?? undefined}
+        />
         <p className="text-sm font-medium text-text-muted">{todayLabel}</p>
       </div>
 
@@ -149,9 +150,7 @@ export default function DoctorDashboardView() {
 
       <div className="mt-8 grid gap-8 lg:grid-cols-5">
         <section className="lg:col-span-3">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-            Incoming requests
-          </h2>
+          <SectionHeading title="Incoming requests" />
           {requested.length === 0 ? (
             <p className="rounded-card border border-dashed border-border bg-surface p-6 text-center text-sm text-text-muted">
               No pending consultation requests. New patient bookings will appear here.
@@ -173,18 +172,13 @@ export default function DoctorDashboardView() {
 
         <aside className="space-y-8 lg:col-span-2">
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-              Today&apos;s schedule
-            </h2>
+            <SectionHeading title="Today's schedule" />
             {todaySchedule.length === 0 ? (
               <p className="text-sm text-text-muted">No consultations scheduled for today.</p>
             ) : (
-              <div className="space-y-2">
+              <FlushList className="mt-2 rounded-card border border-border bg-surface-raised px-4">
                 {todaySchedule.map((a) => (
-                  <div
-                    key={a.id}
-                    className="rounded-card border border-border bg-surface-raised p-3"
-                  >
+                  <FlushListItem key={a.id}>
                     <p className="font-semibold">{patientLabel(a)}</p>
                     <p className="text-sm text-text-muted">
                       {a.specialty} · {formatWhen(a.scheduled_for ?? a.requested_at)}
@@ -205,32 +199,30 @@ export default function DoctorDashboardView() {
                         Open case
                       </Link>
                     </div>
-                  </div>
+                  </FlushListItem>
                 ))}
-              </div>
+              </FlushList>
             )}
           </section>
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-muted">
-              Follow-ups due
-            </h2>
+            <SectionHeading title="Follow-ups due" />
             {followUps.length === 0 ? (
               <p className="text-sm text-text-muted">No open follow-ups.</p>
             ) : (
-              <ul className="space-y-2">
+              <FlushList className="mt-2">
                 {followUps.map((e) => (
-                  <li key={e.id}>
+                  <FlushListItem key={e.id}>
                     <Link
                       href={`/doctor/consultations/${e.id}`}
-                      className="block rounded-card border border-border bg-surface-raised p-3 text-sm"
+                      className="block text-sm"
                     >
                       <p className="font-semibold">{e.patient_label}</p>
                       <p className="capitalize text-text-muted">{e.encounter_type}</p>
                     </Link>
-                  </li>
+                  </FlushListItem>
                 ))}
-              </ul>
+              </FlushList>
             )}
             {(dash?.follow_ups_due ?? 0) > followUps.length && (
               <Link href="/doctor/consultations" className="mt-2 inline-block text-sm font-semibold text-primary">

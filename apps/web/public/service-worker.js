@@ -1,6 +1,13 @@
 /* SETU PWA — app shell + background sync hook for offline upload outbox */
-const CACHE = "setu-shell-v1";
-const SHELL = ["/", "/icon.svg", "/manifest.json"];
+const CACHE = "setu-shell-v2";
+const SHELL = [
+  "/",
+  "/icon.svg",
+  "/manifest.json",
+  "/apple-touch-icon.png",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -38,8 +45,8 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(d.title ?? "Setu", {
       body: d.body ?? "",
-      icon: "/icon.svg",
-      badge: "/icon.svg",
+      icon: "/icons/icon-192x192.png",
+      badge: "/icons/icon-192x192.png",
       data: { url },
     })
   );

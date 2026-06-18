@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { getAuthMe, getPatientMe, getProviderMe } from "@/lib/api";
 import { homeForRole, roleFromMetadata, type UserRole } from "@/lib/auth/role";
@@ -160,9 +161,12 @@ export default function LoginForm({ portal = "patient" }: LoginFormProps) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10 animate-setu-fade">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">{copy.badge}</p>
-      <h1 className="mt-1 text-[26px] font-semibold">{copy.title}</h1>
-      <p className="mt-2 text-sm text-text-muted">{copy.subtitle}</p>
+      <AuthBrand
+        badge={copy.badge}
+        title={copy.title}
+        subtitle={copy.subtitle}
+        welcomeHref={portal === "patient" ? "/welcome" : "/for-doctors"}
+      />
 
       {step === "phone" ? (
         <div className="mt-8 space-y-4">

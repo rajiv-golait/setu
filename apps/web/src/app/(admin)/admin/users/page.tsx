@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { setAdminUserRole } from "@/lib/api";
 import { MEDICAL_SPECIALTIES } from "@/lib/specialties";
 
@@ -50,14 +52,15 @@ export default function AdminUsersPage() {
 
   return (
     <AdminShell>
-      <p className="text-sm text-text-muted">
-        For testing: pick a mobile number and set whether they use the{" "}
-        <span className="font-semibold text-text">patient</span> or{" "}
-        <span className="font-semibold text-text">doctor</span> app. They still sign in with phone OTP.
-      </p>
+      <ScreenHeader
+        title="User roles"
+        subtitle="Set whether a phone number uses the patient or doctor app. They still sign in with OTP."
+      />
 
-      <div className="mt-6 rounded-card border border-border bg-surface-raised p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Set portal role</h2>
+      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div>
+      <WarmCard variant="inset">
+        <h2 className="text-label text-text-muted">Set portal role</h2>
 
         <label className="mt-4 block">
           <span className="text-sm font-semibold">Mobile number</span>
@@ -135,24 +138,26 @@ export default function AdminUsersPage() {
         >
           {saving ? "Saving…" : "Save role"}
         </PrimaryButton>
-      </div>
+      </WarmCard>
 
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       {success && <p className="mt-4 text-sm text-success">{success}</p>}
+        </div>
 
-      <div className="mt-8 rounded-card border border-border bg-surface p-4 text-sm text-text-muted">
-        <p className="font-semibold text-text">Quick test flow</p>
-        <ol className="mt-2 list-decimal space-y-1 pl-5">
-          <li>Set a number as <strong>Doctor app</strong> here.</li>
-          <li>
-            Open <Link href="/doctor/login" className="font-semibold text-primary">/doctor/login</Link> and OTP
-            sign in with that number.
-          </li>
-          <li>To switch back, set the same number as <strong>Patient app</strong>.</li>
-          <li>
-            Patient UI: <Link href="/login" className="font-semibold text-primary">/login</Link>
-          </li>
-        </ol>
+        <aside className="rounded-card border border-border bg-surface p-4 text-sm text-text-muted lg:sticky lg:top-24 lg:self-start">
+          <p className="font-semibold text-text">Quick test flow</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>Set a number as <strong>Doctor app</strong> here.</li>
+            <li>
+              Open <Link href="/doctor/login" className="font-semibold text-primary">/doctor/login</Link> and OTP
+              sign in with that number.
+            </li>
+            <li>To switch back, set the same number as <strong>Patient app</strong>.</li>
+            <li>
+              Patient UI: <Link href="/login" className="font-semibold text-primary">/login</Link>
+            </li>
+          </ol>
+        </aside>
       </div>
     </AdminShell>
   );

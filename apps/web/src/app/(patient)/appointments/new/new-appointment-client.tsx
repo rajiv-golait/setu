@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { createAppointment } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import { useLocale } from "@/lib/hooks/use-locale";
@@ -52,16 +53,12 @@ export default function NewAppointmentClient() {
   };
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-4">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <h1 className="text-[23px] font-semibold">{t("appointments.book")}</h1>
+    <div className="px-5 pb-8 pt-4">
+      <BackLink />
+      <PageHeader
+        title={t("appointments.book")}
+        subtitle="Your doctor brief is attached to the request automatically."
+      />
 
       <label className="mt-6 block text-sm font-semibold">Specialist type</label>
       <select

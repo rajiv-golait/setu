@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { getProviderMe, updateProviderMe, uploadProviderCredential } from "@/lib/api";
 import type { ProviderRecord } from "@/lib/types";
 
@@ -56,13 +58,13 @@ export default function DoctorSettingsPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Profile</h1>
+      <ScreenHeader title="Profile" subtitle="Your practice details and credentials." />
       {provider?.verification_status && provider.verification_status !== "approved" && (
         <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
           Verification status: {provider.verification_status}. Upload credentials below.
         </p>
       )}
-      <div className="mt-6 max-w-md space-y-4">
+      <WarmCard variant="inset" className="mt-6 max-w-md space-y-4">
         <label className="block text-sm font-semibold">
           Display name
           <input
@@ -124,7 +126,7 @@ export default function DoctorSettingsPage() {
           <input type="file" accept="image/*,application/pdf" className="mt-3 text-sm" onChange={uploadCred} />
           {credMsg && <p className="mt-2 text-sm text-text-muted">{credMsg}</p>}
         </div>
-      </div>
+      </WarmCard>
     </>
   );
 }

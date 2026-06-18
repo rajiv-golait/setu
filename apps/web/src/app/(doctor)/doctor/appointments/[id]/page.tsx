@@ -12,6 +12,7 @@ import { DoctorTimelineSidebar } from "@/components/doctor/doctor-timeline-sideb
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { PatientContextPanel } from "@/components/PatientContextPanel";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { BackLink } from "@/components/ui/back-link";
 import {
   doctorAppointmentAction,
   getAppointment,
@@ -93,9 +94,7 @@ export default function DoctorAppointmentDetailPage() {
         <p className="text-sm text-text-muted">Loading…</p>
       ) : (
         <>
-          <Link href="/doctor/appointments" className="text-sm font-semibold text-primary">
-            ← Back to appointments
-          </Link>
+          <BackLink href="/doctor/appointments" label="Appointments" />
 
           <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6">
             <div className="lg:col-span-2">

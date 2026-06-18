@@ -50,12 +50,12 @@ export function PrescriptionBuilder({
       <h3 className="text-sm font-semibold">Prescription</h3>
       <div className="mt-3 space-y-3">
         {lines.map((line, i) => (
-          <div key={i} className="grid gap-2 sm:grid-cols-2">
+          <div key={i} className="grid gap-2 sm:grid-cols-2 md:grid-cols-6">
             <input
               placeholder="Medicine"
               value={line.name}
               onChange={(e) => update(i, "name", e.target.value)}
-              className="rounded border border-border px-3 py-2 text-sm sm:col-span-2"
+              className="rounded border border-border px-3 py-2 text-sm sm:col-span-2 md:col-span-2"
             />
             <input
               placeholder="Dose"

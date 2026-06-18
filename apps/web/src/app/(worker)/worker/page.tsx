@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { WorkerShell } from "@/components/layout/role-shells";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { DataTable, DataRow } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { listWorkerPatients } from "@/lib/api";
 import { useLocale } from "@/lib/hooks/use-locale";
 import type { AssignedPatient } from "@/lib/types";
@@ -20,28 +23,36 @@ export default function WorkerDashboardPage() {
 
   return (
     <WorkerShell>
-      <h1 className="text-xl font-semibold">{t("worker.dashboard")}</h1>
+      <ScreenHeader title={t("worker.dashboard")} subtitle="Patients assigned to you at the PHC." />
       {error && (
         <p className="mt-2 text-sm text-warning">
           {error} — backend health-worker routes pending.
         </p>
       )}
       <div className="mt-6 space-y-3">
-        {patients.map((p) => (
-          <Link
-            key={p.id}
-            href={`/worker/patient/${p.id}`}
-            className="block rounded-card border border-border bg-surface-raised p-4 shadow-card"
-          >
-            <p className="font-semibold">{p.display_name ?? "Unnamed patient"}</p>
-            <p className="text-sm text-text-muted">
-              {p.lang_pref.toUpperCase()}
-              {p.is_rural ? " · Rural" : ""}
-            </p>
-          </Link>
-        ))}
-        {patients.length === 0 && !error && (
-          <p className="text-sm text-text-muted">No assigned patients yet.</p>
+        {patients.length === 0 && !error ? (
+          <EmptyState
+            title="No patients yet"
+            message="Register a patient or wait for assignments from your supervisor."
+            actionLabel="Register patient"
+            onAction={() => {
+              window.location.href = "/worker/register";
+            }}
+          />
+        ) : (
+          <DataTable className="mt-2">
+            {patients.map((p) => (
+              <DataRow key={p.id} onClick={() => { window.location.href = `/worker/patient/${p.id}`; }}>
+                <div>
+                  <p className="font-semibold">{p.display_name ?? "Unnamed patient"}</p>
+                  <p className="text-sm text-text-muted">
+                    {p.lang_pref.toUpperCase()}
+                    {p.is_rural ? " · Rural" : ""}
+                  </p>
+                </div>
+              </DataRow>
+            ))}
+          </DataTable>
         )}
       </div>
       <Link

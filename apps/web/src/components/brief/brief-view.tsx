@@ -71,10 +71,10 @@ export function BriefView({
   const [qOpen, setQOpen] = useState(false);
 
   return (
-    <div className="animate-setu-fade px-[18px] pb-6 pt-[18px]">
+    <div className="px-[18px] pb-6 pt-[18px]">
       <div className="mb-3.5 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-[0.08em] text-primary-light">
-          Doctor Brief
+        <span className="text-label text-primary-light">
+          Doctor brief
         </span>
         <span className="ml-auto text-xs text-text-muted">
           {new Date(brief.generated_at).toLocaleDateString("en-IN", {

@@ -6,6 +6,7 @@ import { getBrief } from "@/lib/api";
 import { BriefView } from "@/components/brief/brief-view";
 import { BriefSkeleton } from "@/components/ui/skeleton";
 import { ErrorPanel } from "@/components/ui/state-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { DoctorBrief } from "@/lib/types";
 
@@ -56,14 +57,16 @@ export default function BriefPage() {
 
   if (!brief) {
     return (
-      <div className="px-5 py-8">
-        <ErrorPanel
+      <div className="px-5 py-4">
+        <EmptyState
+          variant="withSaathi"
           title="No brief yet"
-          message="Upload a prescription or lab report to generate your doctor brief."
+          message="Upload a prescription or lab report — Setu will build a one-page summary for your doctor."
+          actionLabel="Upload a document"
+          onAction={() => {
+            window.location.href = "/upload";
+          }}
         />
-        <Link href="/upload" className="mt-4 block text-center text-sm font-semibold text-primary">
-          Upload a document
-        </Link>
       </div>
     );
   }

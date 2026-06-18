@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
 import { ShareBriefCard } from "@/components/brief/share-brief-card";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { BackLink } from "@/components/ui/back-link";
 import { usePatient } from "@/lib/hooks/use-patient";
 
 export default function SharePage() {
@@ -14,7 +15,7 @@ export default function SharePage() {
 
   if (!patient?.id) {
     return (
-      <div className="animate-setu-fade px-5 pb-24 pt-5 text-center">
+      <div className="px-5 pb-24 pt-5 text-center">
         <p className="text-sm text-text-muted">Sign in to share your doctor brief.</p>
         <Link href="/login" className="mt-3 inline-block text-sm font-semibold text-primary">
           Sign in
@@ -24,19 +25,12 @@ export default function SharePage() {
   }
 
   return (
-    <div className="animate-setu-fade px-[18px] pb-24 pt-5">
-      <Link href="/brief" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Back to brief
-      </Link>
-      <div className="mb-5 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-primary-light">
-          Share with doctor
-        </p>
-        <h1 className="mt-1 text-[22px] font-semibold tracking-tight">Show this to your doctor</h1>
-        <p className="mt-1 text-sm text-text-muted">Scan the QR or send the link — no app needed.</p>
-      </div>
-
+    <div className="px-[18px] pb-24 pt-5">
+      <BackLink href="/brief" label="Back to brief" />
+      <ScreenHeader
+        title="Show this to your doctor"
+        subtitle="Scan the QR or send the link — no app needed on their side."
+      />
       <ShareBriefCard patientId={patient.id} patientName={patient.displayName} />
     </div>
   );

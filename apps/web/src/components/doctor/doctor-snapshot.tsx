@@ -22,7 +22,7 @@ export function DoctorSnapshot({
 }) {
   if (expired || !snapshot) {
     return (
-      <div className="flex min-h-screen flex-col items-center bg-surface px-6 py-16 text-center animate-setu-fade">
+      <div className="flex min-h-screen flex-col items-center bg-surface px-6 py-16 text-center print:py-8">
         <div className="flex h-[62px] w-[62px] items-center justify-center rounded-full bg-[#FBF1E3]">
           <Clock className="h-[30px] w-[30px] text-warning" strokeWidth={1.7} />
         </div>
@@ -31,9 +31,8 @@ export function DoctorSnapshot({
           For privacy, shared briefs expire automatically. Ask the patient to share a new one.
         </p>
         <div className="mt-5 inline-flex items-center gap-2 text-xs text-text-faint">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-[11px] font-bold text-white">
-            S
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/setu-logo.webp" alt="" width={16} height={16} className="h-4 w-4 rounded object-contain" />
           Secured by Setu
         </div>
       </div>
@@ -47,19 +46,18 @@ export function DoctorSnapshot({
     brief.chief_concern;
 
   return (
-    <div className="min-h-screen bg-surface animate-setu-fade">
-      <div className="flex items-center gap-2 border-b border-[#E2E2DA] bg-[#F2F1EC] px-4 py-2.5">
+    <div className="min-h-screen bg-surface print:bg-white">
+      <div className="no-print flex items-center gap-2 border-b border-[#E2E2DA] bg-[#F2F1EC] px-4 py-2.5">
         <Lock className="h-[13px] w-[13px] text-success" strokeWidth={2} />
         <span className="truncate font-mono text-[12.5px] text-[#5B6B61]">
           setu.health/brief/{token}
         </span>
       </div>
 
-      <div className="px-[18px] pb-8 pt-[18px]">
-        <div className="mb-3.5 flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-white">
-            S
-          </span>
+      <div className="mx-auto max-w-2xl px-[18px] pb-8 pt-[18px] print:max-w-none print:px-0 print:pt-4">
+        <div className="no-print mb-3.5 flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/setu-logo.webp" alt="Setu" width={22} height={22} className="h-[22px] w-[22px] rounded object-contain" />
           <span className="text-[13px] font-semibold text-[#3D4A42]">
             Setu · Verified snapshot
           </span>
@@ -164,11 +162,15 @@ export function DoctorSnapshot({
         <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-[0.06em] text-[#3D4A42]">
           Current medications
         </p>
-        <div className="flex flex-col gap-2">
-          {brief.active_medications.slice(0, 4).map((m) => (
+        <div className="overflow-hidden rounded-card border border-border bg-surface-raised">
+          {brief.active_medications.slice(0, 4).map((m, i) => (
             <div
               key={m.name}
-              className="rounded-[11px] border border-border bg-surface-raised px-3.5 py-2.5"
+              className={`px-4 py-2.5 ${
+                i < Math.min(brief.active_medications.length, 4) - 1
+                  ? "border-b border-[#F2F2EC]"
+                  : ""
+              }`}
             >
               <span className="text-[14.5px] font-semibold">
                 {m.name} {m.dose ?? ""}
@@ -180,8 +182,10 @@ export function DoctorSnapshot({
           ))}
         </div>
 
-        <div className="mt-6 border-t border-border pt-4 text-center">
-          <BriefExportActions shareToken={token} briefId={brief.brief_id} />
+        <div className="mt-6 border-t border-border pt-4 text-center print:border-0">
+          <div className="no-print">
+            <BriefExportActions shareToken={token} briefId={brief.brief_id} />
+          </div>
           <p className="mt-4 text-[12.5px] text-text-faint">
             This snapshot was shared by the patient and expires automatically.
           </p>

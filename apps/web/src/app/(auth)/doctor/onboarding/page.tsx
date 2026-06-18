@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { registerProvider, uploadProviderCredential } from "@/lib/api";
 
 const STEPS = ["Profile", "Credentials", "Done"] as const;
@@ -53,20 +54,33 @@ export default function DoctorOnboardingPage() {
 
   return (
     <div className="mx-auto min-h-screen max-w-lg px-5 py-10">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Doctor onboarding</p>
-      <h1 className="mt-1 text-2xl font-semibold">Set up your practice</h1>
-      <p className="mt-2 text-sm text-text-muted">
-        Step {step + 1} of {STEPS.length}: {STEPS[step]}
-      </p>
+      <AuthBrand
+        badge="Setu · Doctor"
+        title="Set up your practice"
+        subtitle={`Step ${step + 1} of ${STEPS.length} · ${STEPS[step]}`}
+        welcomeHref="/for-doctors"
+      />
+
+      {/* Segmented progress — reads as a wizard, not a stack of cards */}
+      <div className="mb-7 flex items-center gap-2" aria-hidden>
+        {STEPS.map((label, i) => (
+          <span
+            key={label}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${
+              i <= step ? "bg-primary" : "bg-border"
+            }`}
+          />
+        ))}
+      </div>
 
       {step === 0 && (
-        <div className="mt-8 space-y-4">
+        <div className="space-y-4">
           <label className="block">
             <span className="text-sm font-semibold">Display name</span>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1 w-full rounded-card border border-border px-4 py-3"
+              className="mt-1 w-full rounded-card border border-border bg-surface-raised px-4 py-3"
               placeholder="Dr. Sharma"
             />
           </label>
@@ -75,7 +89,7 @@ export default function DoctorOnboardingPage() {
             <input
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
-              className="mt-1 w-full rounded-card border border-border px-4 py-3"
+              className="mt-1 w-full rounded-card border border-border bg-surface-raised px-4 py-3"
               placeholder="General medicine"
             />
           </label>
@@ -84,7 +98,7 @@ export default function DoctorOnboardingPage() {
             <input
               value={facility}
               onChange={(e) => setFacility(e.target.value)}
-              className="mt-1 w-full rounded-card border border-border px-4 py-3"
+              className="mt-1 w-full rounded-card border border-border bg-surface-raised px-4 py-3"
               placeholder="District hospital"
             />
           </label>
@@ -95,7 +109,7 @@ export default function DoctorOnboardingPage() {
       )}
 
       {step === 1 && (
-        <div className="mt-8 space-y-4">
+        <div className="space-y-4">
           <p className="text-sm text-text-muted">
             Upload your medical registration or clinic ID (optional for now — admin will verify).
           </p>
@@ -103,7 +117,7 @@ export default function DoctorOnboardingPage() {
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm"
+            className="w-full rounded-card border border-dashed border-border bg-surface-raised px-4 py-3 text-sm"
           />
           <PrimaryButton disabled={busy} onClick={uploadCred}>
             {file ? "Upload & continue" : "Skip for now"}
@@ -112,12 +126,12 @@ export default function DoctorOnboardingPage() {
       )}
 
       {step === 2 && (
-        <div className="mt-8">
+        <div className="space-y-4">
           <p className="text-sm text-text-muted">
             Your profile is submitted. An admin will approve your account before you can accept
             patients.
           </p>
-          <PrimaryButton className="mt-4" onClick={() => router.replace("/doctor/pending")}>
+          <PrimaryButton onClick={() => router.replace("/doctor/pending")}>
             Go to pending status
           </PrimaryButton>
         </div>

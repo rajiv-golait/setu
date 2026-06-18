@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { getDocumentExplanation, getSummary } from "@/lib/api";
+import { SectionHeading } from "@/components/ui/section-heading";
+import { WarmCard } from "@/components/ui/warm-card";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { PatientSummary } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -61,19 +63,17 @@ function SummaryContent() {
 
   return (
     <div
-      className={cn("animate-setu-fade px-5 pb-8 pt-5", usesDevanagari && "font-devanagari")}
+      className={cn("px-5 pb-8 pt-5", usesDevanagari && "font-devanagari")}
       lang={lang}
     >
-      <div className="mb-5 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="font-display text-[23px] font-semibold tracking-tight">In simple words</h1>
-          {isLiveAI && (
-            <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs font-semibold text-success">
-              AI verified
-            </span>
-          )}
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[22px] font-semibold tracking-tight text-text">
+            In simple words
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">Saathi&apos;s plain-language read of your document.</p>
         </div>
-        <div className="flex rounded-[11px] bg-[#E0E0D8] p-1">
+        <div className="flex shrink-0 rounded-[11px] bg-[#E0E0D8] p-1">
           {(["mr", "hi", "en"] as const).map((l) => (
             <button
               key={l}
@@ -89,6 +89,10 @@ function SummaryContent() {
           ))}
         </div>
       </div>
+
+      {isLiveAI && (
+        <p className="-mt-3 mb-4 text-xs font-semibold text-success">AI verified</p>
+      )}
 
       {error && <p className="text-danger">{error}</p>}
       {!summary && !fallbackText && !error && <p className="text-text-faint">Loading…</p>}
@@ -107,15 +111,13 @@ function SummaryContent() {
 
       {summary && (
         <>
-          <p className="text-xl font-semibold leading-relaxed">{summary.greeting}</p>
+          <p className="text-body-lg font-semibold leading-relaxed">{summary.greeting}</p>
 
           <section className="mt-6">
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-primary-light">
-              What we found
-            </h2>
+            <SectionHeading title="What we found" />
             <ul className="mt-3 space-y-2">
               {summary.what_we_found.map((line, i) => (
-                <li key={i} className="flex gap-2 text-base">
+                <li key={i} className="flex gap-2 text-body-lg">
                   <span className="text-success">✓</span>
                   {line}
                 </li>
@@ -124,25 +126,20 @@ function SummaryContent() {
           </section>
 
           <section className="mt-6">
-            <h2 className="text-[13px] font-semibold uppercase tracking-wide text-primary-light">
-              Your medicines
-            </h2>
-            <div className="mt-3 flex flex-col gap-2.5">
+            <SectionHeading title="Your medicines" />
+            <div className="mt-3 flex flex-col gap-2">
               {summary.your_medicines.map((m) => (
-                <div
-                  key={m.name}
-                  className="rounded-card border border-border bg-surface-raised p-4 shadow-card"
-                >
+                <WarmCard key={m.name} variant="flat">
                   <p className="font-sans font-semibold">{m.name}</p>
-                  <p className={cn("mt-1 text-base", usesDevanagari && "font-devanagari")}>{m.how_to_take}</p>
+                  <p className={cn("mt-1 text-body-lg", usesDevanagari && "font-devanagari")}>{m.how_to_take}</p>
                   <p className="mt-0.5 text-sm text-text-muted">{m.plain}</p>
-                </div>
+                </WarmCard>
               ))}
             </div>
           </section>
 
           <section className="mt-6 rounded-card border border-warning-border bg-warning-bg p-4">
-            <h2 className="text-[13px] font-semibold uppercase text-warning">What to watch</h2>
+            <SectionHeading title="What to watch" className="[&_h2]:text-warning" />
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#7C3A06]">
               {summary.what_to_watch.map((w, i) => (
                 <li key={i}>{w}</li>
@@ -151,7 +148,7 @@ function SummaryContent() {
           </section>
 
           <section className="mt-4 rounded-card border border-success-border bg-success-bg p-4">
-            <h2 className="text-[13px] font-semibold uppercase text-success">Next steps</h2>
+            <SectionHeading title="Next steps" className="[&_h2]:text-success" />
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-success">
               {summary.next_steps.map((s, i) => (
                 <li key={i}>{s}</li>

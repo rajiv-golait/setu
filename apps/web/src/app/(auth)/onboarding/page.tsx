@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { LanguagePicker } from "@/components/profile/language-picker";
 import { updatePatientMe } from "@/lib/api";
 import { isPatientLang, type PatientLang } from "@/lib/constants/langs";
@@ -47,10 +48,13 @@ export default function OnboardingPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10 animate-setu-fade">
-      <h1 className="text-[26px] font-semibold">Choose your language</h1>
-      <p className="mt-2 text-sm text-text-muted">भाषा निवडा · भाषा चुनें</p>
+      <AuthBrand
+        badge="Setu · Patient"
+        title="Choose your language"
+        subtitle="Menus, Saathi, and summaries will use this language. You can change it anytime in your profile."
+      />
 
-      <div className="mt-8">
+      <div className="mt-2">
         <LanguagePicker value={lang} onChange={setLang} disabled={loading} />
       </div>
 

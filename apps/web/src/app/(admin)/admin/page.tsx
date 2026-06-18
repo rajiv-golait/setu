@@ -2,18 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/role-shells";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import { getAnalyticsOverview } from "@/lib/api";
 import { useLocale } from "@/lib/hooks/use-locale";
 import type { AnalyticsOverview } from "@/lib/types";
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-card border border-border bg-surface-raised p-4">
-      <p className="text-2xl font-bold text-primary">{value}</p>
-      <p className="text-sm text-text-muted">{label}</p>
-    </div>
-  );
-}
 
 export default function AdminPage() {
   const { t } = useLocale();
@@ -28,7 +21,7 @@ export default function AdminPage() {
 
   return (
     <AdminShell>
-      <p className="text-sm text-text-muted">{t("admin.dashboard")}</p>
+      <PageHeader title="Overview" subtitle={t("admin.dashboard")} />
       {error && <p className="mt-4 text-sm text-warning">{error}</p>}
       {data && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

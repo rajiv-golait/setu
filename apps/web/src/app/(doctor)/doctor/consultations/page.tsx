@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { listEncountersForPatient, listProviderPatients } from "@/lib/api";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { DataTable, DataRow } from "@/components/ui/data-table";
 import type { Encounter } from "@/lib/types";
 
 type Row = Encounter & { patient_label: string };
@@ -39,27 +40,24 @@ export default function DoctorConsultationsPage() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Consultation history</h1>
+      <ScreenHeader title="Consultation history" subtitle="Past and open visits across your patients." />
       {loading ? (
         <p className="mt-4 text-sm text-text-faint">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="mt-4 text-sm text-text-muted">No consultations yet.</p>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <DataTable className="mt-6">
           {rows.map((e) => (
-            <li key={e.id}>
-              <Link
-                href={`/doctor/consultations/${e.id}`}
-                className="block rounded-card border border-border bg-surface-raised p-4"
-              >
+            <DataRow key={e.id} onClick={() => { window.location.href = `/doctor/consultations/${e.id}`; }}>
+              <div>
                 <p className="font-semibold">{e.patient_label}</p>
                 <p className="text-sm capitalize text-text-muted">
                   {e.status} · {e.encounter_type}
                 </p>
-              </Link>
-            </li>
+              </div>
+            </DataRow>
           ))}
-        </ul>
+        </DataTable>
       )}
     </>
   );

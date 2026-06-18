@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AppointmentCard } from "@/components/appointments/appointment-card";
 import { RequestQueueCard } from "@/components/doctor/request-queue-card";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { isToday } from "@/lib/doctor-utils";
 import { listAppointments, doctorAppointmentAction } from "@/lib/api";
 import type { Appointment } from "@/lib/types";
@@ -111,7 +112,7 @@ function DoctorAppointmentsContent() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold">Appointments</h1>
+      <ScreenHeader title="Appointments" subtitle="Requests, today's schedule, and history." />
       <div className="mt-4 flex flex-wrap gap-2">
         {tabs.map((t) => (
           <button

@@ -64,6 +64,11 @@ const config: Config = {
           DEFAULT: "#F0E5D6",
           warm: "#E5D9C8",
         },
+        inset: "#F4F0E8",
+      },
+      fontSize: {
+        "body-lg": ["18px", { lineHeight: "28px" }],
+        label: ["13px", { lineHeight: "18px", fontWeight: "600" }],
       },
       fontFamily: {
         sans: ["var(--font-mukta)", "system-ui", "sans-serif"],

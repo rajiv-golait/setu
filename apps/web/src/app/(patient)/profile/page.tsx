@@ -6,6 +6,8 @@ import { ChevronLeft, ChevronRight, Share2, Shield } from "lucide-react";
 import { LanguagePicker } from "@/components/profile/language-picker";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { ErrorPanel } from "@/components/ui/state-panel";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { getPatientProfile, updatePatientMe, updatePatientProfile } from "@/lib/api";
 import { isPatientLang, type PatientLang } from "@/lib/constants/langs";
 import { useLocale } from "@/lib/hooks/use-locale";
@@ -121,7 +123,7 @@ export default function PatientProfilePage() {
 
   if (loadError) {
     return (
-      <div className="animate-setu-fade px-5 pb-24 pt-5">
+      <div className="px-5 pb-24 pt-5">
         <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
           <ChevronLeft className="h-4 w-4" aria-hidden />
           {t("profile.back")}
@@ -135,11 +137,10 @@ export default function PatientProfilePage() {
   }
 
   return (
-    <div className="animate-setu-fade px-5 pb-24 pt-5">
-      <h1 className="text-[23px] font-semibold tracking-tight">{t("profile.pageTitle")}</h1>
-      <p className="mt-1 text-sm text-text-muted">{t("profile.pageSubtitle")}</p>
+    <div className="px-5 pb-24 pt-5">
+      <ScreenHeader title={t("profile.pageTitle")} subtitle={t("profile.pageSubtitle")} />
 
-      <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+      <WarmCard variant="inset" className="mt-2">
         <h2 className="text-sm font-semibold">{t("profile.language.title")}</h2>
         <p className="mt-1 text-sm text-text-muted">{t("profile.language.subtitle")}</p>
         <div className="mt-4">
@@ -148,9 +149,9 @@ export default function PatientProfilePage() {
         {langSaved && (
           <p className="mt-3 text-sm text-success">{t("profile.language.saved")}</p>
         )}
-      </section>
+      </WarmCard>
 
-      <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+      <WarmCard variant="inset" className="mt-6">
         <h2 className="text-sm font-semibold">{t("profile.health.title")}</h2>
         <p className="mt-1 text-sm text-text-muted">{t("profile.subtitle")}</p>
 
@@ -230,7 +231,7 @@ export default function PatientProfilePage() {
           </PrimaryButton>
           {healthSaved && <p className="text-sm text-success">{t("profile.saved")}</p>}
         </div>
-      </section>
+      </WarmCard>
 
       <section className="mt-6 space-y-2">
         <Link

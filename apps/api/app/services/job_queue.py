@@ -73,19 +73,22 @@ async def enqueue_pipeline(
 
 
 async def dequeue_pipeline(timeout_seconds: int = 0) -> dict | None:
-    try:
-        redis = jobs_store._redis()
-        if timeout_seconds > 0 and hasattr(redis, "blpop"):
-            result = await redis.blpop(QUEUE_KEY, timeout=timeout_seconds)
-            if result:
-                _, raw = result
-                return json.loads(raw)
-            return None
-        raw = await redis.lpop(QUEUE_KEY)
-        if raw:
+    """Pop one job, or None if the queue is empty.
+
+    Connection/transport errors are NOT swallowed here — they propagate to the
+    single caller (pipeline_worker_loop) so it can back off and throttle logging
+    instead of emitting a warning on every poll when Redis is unreachable.
+    """
+    redis = jobs_store._redis()
+    if timeout_seconds > 0 and hasattr(redis, "blpop"):
+        result = await redis.blpop(QUEUE_KEY, timeout=timeout_seconds)
+        if result:
+            _, raw = result
             return json.loads(raw)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("queue dequeue failed: %s", exc)
+        return None
+    raw = await redis.lpop(QUEUE_KEY)
+    if raw:
+        return json.loads(raw)
     return None
 
 

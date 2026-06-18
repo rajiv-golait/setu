@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { WorkerShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { PageHeader } from "@/components/ui/page-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { registerPatientAsWorker } from "@/lib/api";
 import { useLocale } from "@/lib/hooks/use-locale";
 
@@ -34,8 +36,8 @@ export default function WorkerRegisterPage() {
 
   return (
     <WorkerShell>
-      <h1 className="text-xl font-semibold">{t("worker.register")}</h1>
-      <div className="mt-6 space-y-4">
+      <PageHeader title={t("worker.register")} subtitle="Register a patient and continue to their record." />
+      <WarmCard className="space-y-4">
         <input
           placeholder="Patient name"
           value={name}
@@ -64,7 +66,7 @@ export default function WorkerRegisterPage() {
         <PrimaryButton disabled={!name || loading} onClick={submit}>
           Register & continue
         </PrimaryButton>
-      </div>
+      </WarmCard>
     </WorkerShell>
   );
 }

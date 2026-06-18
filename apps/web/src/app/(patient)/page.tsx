@@ -3,23 +3,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Camera, Check, Lock, Sparkles, Sun, Sunrise, Sunset, X } from "lucide-react";
-import { SecondaryButton } from "@/components/ui/buttons";
+import { Lock, Sparkles, X } from "lucide-react";
 import { ConsentPanel } from "@/components/consent/consent-panel";
 import { OfflineQueueBanner } from "@/components/ui/offline-queue-banner";
 import { ConnectionBadge } from "@/components/ui/connection-badge";
-import { SetuAvatar } from "@/components/characters/setu-avatar";
 import { LabSparkline } from "@/components/ui/sparkline";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import {
+  EmptyInvite,
+  MedRow,
+  SlotRow,
+  TodaySection,
+} from "@/components/patient/today-primitives";
 import { ReminderOptIn } from "@/components/reminders/reminder-opt-in";
 import { hasLocalConsent, markLocalConsent } from "@/lib/consent";
 import { getConsentStatus, getReminders, getVitalsSummary, listVitals } from "@/lib/api";
 import { useLiveMemory } from "@/lib/hooks/use-live-memory";
-import { isTakenToday, markTakenToday } from "@/lib/med-acks";
-import { computeDriftNudge } from "@/lib/drift";
+import { markTakenToday } from "@/lib/med-acks";
 import { pushSaathiMessage } from "@/lib/saathi-history";
+import { computeDriftNudge } from "@/lib/drift";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type {
-  CurrentTruthEntry,
   ReminderItem,
   ReminderSchedule,
   VitalReading,
@@ -27,28 +31,7 @@ import type {
   VitalType,
 } from "@/lib/types";
 
-function medField(entry: CurrentTruthEntry, key: string): string {
-  const v = entry.value;
-  const val = v[key] ?? (Array.isArray(v.values) ? (v.values[0] as Record<string, unknown>)?.[key] : undefined);
-  return val == null ? "" : String(val);
-}
-
-/** Plain-language "why" for a medicine — from its own instructions/frequency, never invented. */
-function medWhy(entry: CurrentTruthEntry): string {
-  const instr = medField(entry, "instructions");
-  if (instr) return instr;
-  const freq = medField(entry, "frequency");
-  const food = medField(entry, "relative_to_food");
-  const parts = [freq, food].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "As prescribed by your doctor";
-}
-
 type Slot = "morning" | "afternoon" | "night";
-const SLOT_META: Record<Slot, { label: string; icon: typeof Sunrise }> = {
-  morning: { label: "Morning", icon: Sunrise },
-  afternoon: { label: "Afternoon", icon: Sun },
-  night: { label: "Night", icon: Sunset },
-};
 
 function slotForTime(t: string): Slot {
   const s = t.toLowerCase();
@@ -170,7 +153,12 @@ export default function TodayPage() {
   if (patient?.id && !consentOk) {
     return (
       <div className="animate-setu-fade px-5 pb-8 pt-5">
-        <Greeting name={greetingName} today={today} />
+        <ScreenHeader
+          mode="greeting"
+          dateLine={today}
+          name={greetingName}
+          tagline="Here's your day. I'm keeping watch."
+        />
         <div className="mt-6 rounded-hero border border-border bg-surface-raised p-5 shadow-raised">
           <ConsentPanel
             patientId={patient.id}
@@ -186,7 +174,12 @@ export default function TodayPage() {
     <div className="animate-setu-fade px-5 pb-8 pt-5">
       <ConnectionBadge />
       <OfflineQueueBanner />
-      <Greeting name={greetingName} today={today} />
+      <ScreenHeader
+        mode="greeting"
+        dateLine={today}
+        name={greetingName}
+        tagline="Here's your day. I'm keeping watch."
+      />
 
       {/* Living-memory moment: a doctor just added a medicine. */}
       {newMed && (
@@ -211,7 +204,7 @@ export default function TodayPage() {
       )}
 
       {/* Today's medicines */}
-      <Section title="Today's medicines">
+      <TodaySection title="Today's medicines">
         {meds.length === 0 ? (
           <EmptyInvite
             text="No medicines on file yet. Show me a prescription and I'll keep track."
@@ -237,11 +230,11 @@ export default function TodayPage() {
           </div>
         )}
         <span className="sr-only">{acks}</span>
-      </Section>
+      </TodaySection>
 
       {/* Upcoming reminders as a time-of-day timeline */}
       {(slots.morning.length > 0 || slots.afternoon.length > 0 || slots.night.length > 0) && (
-        <Section title="Your day">
+        <TodaySection title="Your day">
           <div className="flex flex-col gap-3">
             {(["morning", "afternoon", "night"] as Slot[]).map((slot) =>
               slots[slot].length === 0 ? null : (
@@ -252,11 +245,11 @@ export default function TodayPage() {
           {reminders?.disclaimer && (
             <p className="mt-2 text-[11px] italic text-text-faint">{reminders.disclaimer}</p>
           )}
-        </Section>
+        </TodaySection>
       )}
 
       {/* One real trend — real data only */}
-      <Section title="Your trend">
+      <TodaySection title="Your trend">
         {trend ? (
           <Link
             href="/vitals"
@@ -282,7 +275,7 @@ export default function TodayPage() {
             onClick={() => router.push("/vitals")}
           />
         )}
-      </Section>
+      </TodaySection>
 
       {/* Medicine-reminder opt-in (friendly pre-prompt) */}
       {/* Drift nudge — calm amber, non-diagnostic, dismissible */}
@@ -317,129 +310,6 @@ export default function TodayPage() {
           Profile &amp; privacy
         </Link>
       </div>
-    </div>
-  );
-}
-
-function Greeting({ name, today }: { name: string; today: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div>
-        <p className="text-[13px] text-text-muted">{today}</p>
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Namaste, {name}</h1>
-        <p className="mt-0.5 text-sm text-text-muted">Here&apos;s your day. I&apos;m keeping watch.</p>
-      </div>
-      <SetuAvatar size={56} label="SETU, your health keeper" />
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mt-7">
-      <div className="mb-2.5 flex items-center gap-2 px-0.5">
-        <h2 className="font-display text-[13px] font-semibold uppercase tracking-[0.06em] text-primary-light">
-          {title}
-        </h2>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function MedRow({
-  entry,
-  isNew,
-  onTaken,
-}: {
-  entry: CurrentTruthEntry;
-  isNew: boolean;
-  onTaken: () => void;
-}) {
-  const name = medField(entry, "name") || entry.normalized_key;
-  const dose = medField(entry, "dose");
-  const unit = medField(entry, "dose_unit");
-  const taken = isTakenToday(entry.normalized_key);
-
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-card border p-3.5 shadow-card ${
-        isNew ? "border-marigold-border bg-marigold-bg" : "border-border bg-surface-raised"
-      }`}
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="font-display text-[15px] font-semibold">{name}</p>
-          {dose && (
-            <span className="rounded-full bg-[#E4F3F0] px-2 py-0.5 text-xs font-semibold text-primary">
-              {dose}
-              {unit}
-            </span>
-          )}
-          {isNew && (
-            <span className="rounded-full bg-marigold px-2 py-0.5 text-[11px] font-semibold text-white">
-              New
-            </span>
-          )}
-        </div>
-        <p className="mt-0.5 text-sm text-text-muted">{medWhy(entry)}</p>
-      </div>
-      <button
-        type="button"
-        onClick={onTaken}
-        disabled={taken}
-        aria-label={taken ? `${name} taken` : `Mark ${name} as taken`}
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-          taken
-            ? "animate-med-check border-success bg-success text-white"
-            : "border-primary-light bg-white text-primary-light active:bg-[#E4F3F0]"
-        }`}
-      >
-        <Check className="h-6 w-6" strokeWidth={2.4} />
-      </button>
-    </div>
-  );
-}
-
-function SlotRow({ slot, items }: { slot: Slot; items: ReminderItem[] }) {
-  const { label, icon: Icon } = SLOT_META[slot];
-  return (
-    <div className="flex gap-3">
-      <div className="flex w-16 shrink-0 flex-col items-center gap-1 pt-1">
-        <Icon className="h-5 w-5 text-marigold" strokeWidth={1.8} aria-hidden />
-        <span className="text-[11px] font-semibold text-text-muted">{label}</span>
-      </div>
-      <div className="flex-1 space-y-1.5">
-        {items.map((r, i) => (
-          <div
-            key={`${r.label}-${i}`}
-            className="rounded-card border border-border bg-surface-raised px-3.5 py-2.5 shadow-card"
-          >
-            <p className="text-sm font-semibold">{r.label}</p>
-            {r.frequency_text && <p className="text-xs text-text-muted">{r.frequency_text}</p>}
-            {r.needs_confirmation && (
-              <span className="mt-1 inline-block rounded-full bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
-                Confirm with your doctor
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EmptyInvite({ text, cta, onClick }: { text: string; cta: string; onClick: () => void }) {
-  return (
-    <div className="rounded-card border border-dashed border-primary-light/40 bg-[#EAF5F2] p-4 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#D6EDE8]">
-        <Camera className="h-6 w-6 text-primary" strokeWidth={1.7} aria-hidden />
-      </div>
-      <p className="mt-2 text-sm text-text-muted">{text}</p>
-      <SecondaryButton className="mt-3" onClick={onClick}>
-        {cta}
-      </SecondaryButton>
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Check, FileText, ImagePlus, X } from "lucide-react";
+import { Camera, Check, FileText, ImagePlus, X } from "lucide-react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
 import { uploadDocument, uploadDocumentsBatch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { compressImage, wasCompressed } from "@/lib/image-compress";
@@ -146,24 +148,15 @@ export default function UploadPage() {
 
   return (
     <div className="animate-setu-fade flex min-h-0 flex-1 flex-col px-4 pb-5 pt-3">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-3 flex w-fit items-center gap-2 text-sm font-semibold text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <div className="shrink-0">
-        <h1 className="text-[22px] font-semibold tracking-tight">
-          {hasFiles ? "Review documents" : "Add documents"}
-        </h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {hasFiles
+      <BackLink className="mb-3" />
+      <PageHeader
+        title={hasFiles ? "Review documents" : "Add documents"}
+        subtitle={
+          hasFiles
             ? `${files.length} selected — check they are readable before processing.`
-            : "Choose the type, then take photos or pick files (up to 20)."}
-        </p>
-      </div>
+            : "Choose the type, then take photos or pick files (up to 20)."
+        }
+      />
 
       <div className="mt-4 flex flex-wrap gap-2">
         {DOC_TYPES.map((t) => (

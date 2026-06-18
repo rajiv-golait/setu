@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FileText } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { FlushList, FlushListItem } from "@/components/ui/data-table";
 import { STAGE_LABELS } from "@/lib/constants";
 import { getJob } from "@/lib/api";
 import type { JobStatus } from "@/lib/types";
@@ -76,14 +78,11 @@ function BatchProgressContent() {
         );
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">Processing</p>
-      <h1 className="text-[23px] font-semibold">
-        {failed ? "Some documents need attention" : `Reading ${total} documents`}
-      </h1>
-      <p className="mt-1 text-sm text-text-muted">
-        {done} of {total} complete · {aggregateProgress}% overall
-      </p>
+    <div className="px-5 pb-8 pt-5">
+      <ScreenHeader
+        title={failed ? "Some documents need attention" : `Reading ${total} documents`}
+        subtitle={`${done} of ${total} complete · ${aggregateProgress}% overall`}
+      />
 
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-border">
         <div
@@ -92,7 +91,7 @@ function BatchProgressContent() {
         />
       </div>
 
-      <ul className="mt-6 space-y-3">
+      <FlushList className="mt-6 rounded-card border border-border bg-surface-raised px-4">
         {jobIds.map((id, index) => {
           const job = jobs[id];
           const stage = job?.stage;
@@ -100,10 +99,7 @@ function BatchProgressContent() {
           const complete = job?.status === "completed";
           const isFailed = job?.status === "failed";
           return (
-            <li
-              key={id}
-              className="flex items-center gap-3 rounded-card border border-border bg-surface-raised p-3 shadow-card"
-            >
+            <FlushListItem key={id} className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-info-bg">
                 {complete ? (
                   <Check className="h-5 w-5 text-success" />
@@ -118,17 +114,14 @@ function BatchProgressContent() {
                 </p>
               </div>
               {complete && (
-                <Link
-                  href={`/progress/${id}`}
-                  className="text-xs font-semibold text-primary"
-                >
+                <Link href={`/progress/${id}`} className="text-xs font-semibold text-primary">
                   Details
                 </Link>
               )}
-            </li>
+            </FlushListItem>
           );
         })}
-      </ul>
+      </FlushList>
 
       {failed && (
         <div className="mt-6">

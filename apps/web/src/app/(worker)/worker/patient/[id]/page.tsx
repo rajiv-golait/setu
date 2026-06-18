@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { WorkerShell } from "@/components/layout/role-shells";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { createWorkerShare, getPatient } from "@/lib/api";
 import type { PatientRecord } from "@/lib/types";
 
@@ -24,15 +27,10 @@ export default function WorkerPatientPage() {
 
   return (
     <WorkerShell>
-      <Link href="/worker" className="text-sm font-semibold text-primary">
-        ← Patients
-      </Link>
-      <h1 className="mt-4 text-xl font-semibold">
-        {patient?.display_name ?? "Patient"}
-      </h1>
-      <p className="text-sm text-text-muted">{id}</p>
+      <BackLink href="/worker" label="Patients" />
+      <PageHeader title={patient?.display_name ?? "Patient"} subtitle={id} />
 
-      <div className="mt-6 flex flex-col gap-2">
+      <WarmCard className="flex flex-col gap-2">
         <Link href={`/upload?patient_id=${id}`}>
           <PrimaryButton>Upload report for patient</PrimaryButton>
         </Link>
@@ -46,7 +44,7 @@ export default function WorkerPatientPage() {
           <SecondaryButton>Schedule consultation</SecondaryButton>
         </Link>
         <SecondaryButton onClick={genQr}>Generate share QR</SecondaryButton>
-      </div>
+      </WarmCard>
 
       {shareUrl && (
         <p className="mt-4 break-all rounded-lg bg-[#EEF4F0] p-3 text-xs">{shareUrl}</p>

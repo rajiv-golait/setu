@@ -36,9 +36,10 @@ export function AppShell({
       }
     >
       {!hideNav && !immersive && (
-        <div className="flex justify-end px-4 pt-3">
+        <header className="flex items-center justify-between border-b border-border/60 bg-surface-raised/80 px-4 py-2.5">
+          <span className="font-display text-sm font-semibold text-primary">Setu</span>
           <NotificationBell />
-        </div>
+        </header>
       )}
       <main
         className={

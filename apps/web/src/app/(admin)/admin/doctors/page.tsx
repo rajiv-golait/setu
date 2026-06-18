@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AdminShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { DataTable, DataRow } from "@/components/ui/data-table";
 import { grantAdminProvider, listAdminProviders, revokeAdminProvider, verifyAdminProvider } from "@/lib/api";
 import { MEDICAL_SPECIALTIES } from "@/lib/specialties";
 import type { AdminProviderRecord } from "@/lib/types";
@@ -94,14 +96,18 @@ export default function AdminDoctorsPage() {
 
   return (
     <AdminShell>
-      <p className="text-sm text-text-muted">
-        Add a doctor by mobile number. They sign in at{" "}
-        <span className="font-semibold text-primary">/doctor/login</span> after you grant access.
-      </p>
+      <ScreenHeader
+        title="Doctors"
+        subtitle="Add by mobile number. They sign in at /doctor/login after you grant access."
+      />
 
-      <div className="mt-6 rounded-card border border-border bg-surface-raised p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Add doctor</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <details className="group mt-3 overflow-hidden rounded-card border border-border bg-inset">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-display text-sm font-semibold text-text [&::-webkit-details-marker]:hidden">
+          Add a doctor
+          <span className="text-text-faint transition-transform group-open:rotate-180" aria-hidden>▾</span>
+        </summary>
+        <div className="border-t border-border px-4 pb-4 pt-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="block sm:col-span-2">
             <span className="text-sm font-semibold">Mobile number *</span>
             <input
@@ -147,32 +153,28 @@ export default function AdminDoctorsPage() {
           </label>
         </div>
         <PrimaryButton
-          className="mt-4"
+          className="mt-4 max-w-xs"
           disabled={saving || phone.replace(/\D/g, "").length < 10}
           onClick={onGrant}
         >
           {saving ? "Saving…" : "Grant doctor access"}
         </PrimaryButton>
-      </div>
+        </div>
+      </details>
 
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
 
       <div className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
-          Registered doctors
-        </h2>
+        <h2 className="text-label text-text-muted">Registered doctors</h2>
         {loading ? (
           <p className="mt-3 text-sm text-text-faint">Loading…</p>
         ) : doctors.length === 0 ? (
           <p className="mt-3 text-sm text-text-muted">No doctors yet.</p>
         ) : (
-          <ul className="mt-3 space-y-3">
+          <DataTable className="mt-3">
             {doctors.map((d) => (
-              <li
-                key={d.id}
-                className="flex flex-wrap items-start justify-between gap-3 rounded-card border border-border bg-surface-raised p-4"
-              >
-                <div>
+              <DataRow key={d.id}>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{d.display_name || "Doctor"}</p>
                     {statusBadge(d.verification_status)}
@@ -184,7 +186,7 @@ export default function AdminDoctorsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex shrink-0 flex-col items-end gap-2">
                   <Link href={`/admin/doctors/${d.id}`} className="text-sm font-semibold text-primary">
                     Review →
                   </Link>
@@ -214,9 +216,9 @@ export default function AdminDoctorsPage() {
                     Revoke
                   </button>
                 </div>
-              </li>
+              </DataRow>
             ))}
-          </ul>
+          </DataTable>
         )}
       </div>
     </AdminShell>

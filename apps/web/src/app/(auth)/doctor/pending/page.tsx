@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAuthMe } from "@/lib/api";
+import { AuthBrand } from "@/components/auth/auth-brand";
+import { PrimaryButton } from "@/components/ui/buttons";
 
 export default function DoctorPendingPage() {
   const [status, setStatus] = useState<string | null>(null);
@@ -14,17 +16,18 @@ export default function DoctorPendingPage() {
   }, []);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10 text-center">
-      <h1 className="text-2xl font-semibold">Verification in progress</h1>
-      <p className="mt-3 text-sm text-text-muted">
-        Your doctor account is {status ?? "pending"} admin review. Upload credentials in
-        settings and contact your clinic admin if this takes more than 48 hours.
-      </p>
-      <div className="mt-6 flex flex-col gap-3">
-        <Link href="/doctor/settings" className="font-semibold text-primary">
-          Complete your profile
+    <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10">
+      <AuthBrand
+        badge="Setu · Doctor"
+        title="Verification in progress"
+        subtitle={`Your account is ${status ?? "pending"} admin review. Complete your profile while you wait.`}
+        welcomeHref="/for-doctors"
+      />
+      <div className="flex flex-col gap-3">
+        <Link href="/doctor/settings">
+          <PrimaryButton>Complete your profile</PrimaryButton>
         </Link>
-        <Link href="/login" className="text-sm text-text-muted">
+        <Link href="/doctor/login" className="text-center text-sm text-text-muted">
           Sign out
         </Link>
       </div>

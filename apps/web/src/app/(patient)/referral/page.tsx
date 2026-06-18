@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, FileText, UserCheck } from "lucide-react";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import { createReferral, getBrief } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { DoctorBrief } from "@/lib/types";
@@ -54,7 +56,7 @@ export default function ReferralPage() {
 
   if (done) {
     return (
-      <div className="animate-setu-fade px-5 py-12 text-center">
+      <div className="px-5 py-12 text-center">
         <div className="mx-auto flex h-16 w-16 animate-setu-pop items-center justify-center rounded-full bg-success-bg">
           <Check className="h-8 w-8 text-success" strokeWidth={2} />
         </div>
@@ -72,22 +74,25 @@ export default function ReferralPage() {
   }
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-5">
-      <div className="mb-4 flex items-center gap-2 rounded-card border border-info-border bg-info-bg p-3.5">
-        <UserCheck className="h-5 w-5 shrink-0 text-info" />
-        <p className="text-sm text-info-title">
-          Suggested: <strong>{specialty}</strong> based on your latest labs
-        </p>
-      </div>
+    <div className="px-5 pb-8 pt-5">
+      <ScreenHeader
+        title="Specialist referral"
+        subtitle="Share your brief with a specialist — your doctor-ready summary goes with it."
+      />
+
+      <p className="mb-5 flex items-center gap-2 text-sm text-text-muted">
+        <UserCheck className="h-[18px] w-[18px] shrink-0 text-primary-light" strokeWidth={1.8} />
+        Suggested <strong className="font-semibold text-text">{specialty}</strong> based on your latest labs
+      </p>
 
       {brief && (
-        <div className="mb-5 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+        <WarmCard variant="inset" className="mb-6">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-[#EEF4F0]">
               <FileText className="h-5 w-5 text-primary" strokeWidth={1.7} aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">
+              <p className="text-label text-primary-light">
                 Attached brief
               </p>
               <p className="mt-1 text-[15px] font-semibold leading-snug">{brief.one_line}</p>
@@ -100,11 +105,11 @@ export default function ReferralPage() {
               )}
             </div>
           </div>
-        </div>
+        </WarmCard>
       )}
 
-      <label className="text-[13px] font-semibold uppercase tracking-wide text-[#3D4A42]">
-        Specialty
+      <label className="font-display text-sm font-semibold text-text">
+        Which specialist?
       </label>
       <div className="mt-2 flex flex-col gap-1.5">
         {SPECIALTIES.map((s) => (
@@ -124,7 +129,7 @@ export default function ReferralPage() {
         ))}
       </div>
 
-      <label className="mt-5 block text-[13px] font-semibold uppercase tracking-wide text-[#3D4A42]">
+      <label className="mt-6 block font-display text-sm font-semibold text-text">
         Reason for referral
       </label>
       <textarea

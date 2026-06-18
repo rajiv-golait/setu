@@ -92,15 +92,10 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="mx-auto min-h-screen max-w-5xl bg-surface">
+    <div className="mx-auto min-h-screen max-w-6xl bg-surface">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-raised px-4 py-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-xs font-bold text-white">
-              S
-            </span>
-            <span className="font-semibold text-[#3D4A42]">Setu · Doctor</span>
-          </div>
+          <span className="font-display text-sm font-semibold text-[#3D4A42]">Setu · Doctor</span>
           <div className="flex items-center gap-3">
             <NotificationBell />
             <button
@@ -166,7 +161,7 @@ export function WorkerShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-surface">
       <header className="border-b border-border bg-[#EEF4F0] px-4 py-3">
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">ASHA / PHC</p>
+        <p className="text-label text-primary">Health worker</p>
         <nav className="mt-2 flex gap-3">
           {tabs.map(({ href, label }) => (
             <Link
@@ -215,7 +210,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="mx-auto min-h-screen max-w-5xl bg-surface">
+    <div className="mx-auto min-h-screen max-w-6xl bg-surface">
       <header className="border-b border-border bg-surface-raised px-4 py-3">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">Setu Admin</h1>

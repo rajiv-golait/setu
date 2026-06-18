@@ -2,6 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PREFIXES = [
+  "/welcome",
+  "/for-doctors",
   "/login",
   "/doctor/login",
   "/admin/login",
@@ -80,6 +82,11 @@ export async function middleware(request: NextRequest) {
     if (isPublicPath(pathname)) {
       return response;
     }
+    if (pathname === "/") {
+      const welcome = request.nextUrl.clone();
+      welcome.pathname = "/welcome";
+      return NextResponse.redirect(welcome);
+    }
     const loginUrl = request.nextUrl.clone();
     if (pathname.startsWith("/admin")) {
       loginUrl.pathname = "/admin/login";
@@ -146,5 +153,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  // Skip Next internals AND any static public asset (by extension) so they are never
+  // auth-redirected. Without the extension exclusion, requests like /setu-logo.webp,
+  // /icons/*.png, /manifest.json and /service-worker.js get 307'd to /login when auth
+  // is enabled, which breaks the logo and the PWA asset layer.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|js|txt|xml|woff|woff2)$).*)",
+  ],
 };

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/layout/role-shells";
+import { DataRow, DataTable } from "@/components/ui/data-table";
+import { PageHeader } from "@/components/ui/page-header";
 import { listSupportTickets, updateSupportTicket } from "@/lib/api";
 import type { SupportTicket } from "@/lib/api";
 
@@ -33,7 +35,7 @@ export default function AdminSupportPage() {
 
   return (
     <AdminShell>
-      <p className="text-sm text-text-muted">Support and dispute tickets from patients, doctors, and workers.</p>
+      <PageHeader title="Support" subtitle="Tickets from patients, doctors, and workers." />
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       <div className="mt-6">
         {loading ? (
@@ -41,45 +43,40 @@ export default function AdminSupportPage() {
         ) : tickets.length === 0 ? (
           <p className="text-sm text-text-muted">No tickets yet.</p>
         ) : (
-          <ul className="space-y-4">
+          <DataTable>
             {tickets.map((t) => (
-              <li
-                key={t.id}
-                className="rounded-card border border-border bg-surface-raised p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold">{t.subject}</p>
-                    <p className="mt-1 text-sm text-text-muted">{t.body}</p>
-                    <p className="mt-2 text-xs text-text-faint">
-                      {t.reporter_role} · {new Date(t.created_at).toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold capitalize">
-                    {t.status}
-                  </span>
+              <DataRow key={t.id}>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{t.subject}</p>
+                  <p className="mt-1 text-sm text-text-muted">{t.body}</p>
+                  <p className="mt-2 text-xs text-text-faint">
+                    {t.reporter_role} · {new Date(t.created_at).toLocaleString("en-IN")}
+                  </p>
+                  {t.status === "open" && (
+                    <div className="mt-3 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setStatus(t.id, "in_progress")}
+                        className="text-sm font-semibold text-primary"
+                      >
+                        Mark in progress
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatus(t.id, "resolved")}
+                        className="text-sm font-semibold text-success"
+                      >
+                        Resolve
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {t.status === "open" && (
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setStatus(t.id, "in_progress")}
-                      className="text-sm font-semibold text-primary"
-                    >
-                      Mark in progress
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStatus(t.id, "resolved")}
-                      className="text-sm font-semibold text-success"
-                    >
-                      Resolve
-                    </button>
-                  </div>
-                )}
-              </li>
+                <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs font-semibold capitalize">
+                  {t.status}
+                </span>
+              </DataRow>
             ))}
-          </ul>
+          </DataTable>
         )}
       </div>
     </AdminShell>

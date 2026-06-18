@@ -63,6 +63,18 @@ const en: Messages = {
   "admin.dashboard": "Analytics",
   "video.audioOnly": "Low data (audio only)",
   "offline.queued": "reports waiting to upload",
+  "pwa.install.title": "Install Setu on your phone",
+  "pwa.install.subtitle": "Open full-screen like an app — works offline for uploads.",
+  "pwa.install.android": "Install app",
+  "pwa.install.later": "Not now",
+  "pwa.install.dismiss": "Dismiss",
+  "pwa.install.ios.step1": "Tap Share at the bottom of Safari",
+  "pwa.install.ios.step2": "Scroll down and tap Add to Home Screen",
+  "pwa.install.installed": "Setu is installed on this device.",
+  "pwa.install.unavailable": "Install is available in Chrome on Android, or Safari on iPhone.",
+  "pwa.install.settingsHint": "Add Setu to your home screen for quick access.",
+  "pwa.install.showSteps": "Show install steps",
+  "pwa.install.settingsTitle": "Install app",
 };
 
 const mr: Messages = {
@@ -126,6 +138,18 @@ const mr: Messages = {
   "admin.dashboard": "आकडेवारी",
   "video.audioOnly": "कमी डेटा (फक्त ऑडिओ)",
   "offline.queued": "अपलोड प्रतीक्षेत",
+  "pwa.install.title": "Setu फोनवर इन्स्टॉल करा",
+  "pwa.install.subtitle": "अ‍ॅपसारखे पूर्ण स्क्रीन — ऑफलाइन अपलोडसाठी.",
+  "pwa.install.android": "अ‍ॅप इन्स्टॉल करा",
+  "pwa.install.later": "नंतर",
+  "pwa.install.dismiss": "बंद करा",
+  "pwa.install.ios.step1": "Safari मधील Share बटण दाबा",
+  "pwa.install.ios.step2": "खाली स्क्रोल करून Add to Home Screen निवडा",
+  "pwa.install.installed": "या डिव्हाइसवर Setu इन्स्टॉल आहे.",
+  "pwa.install.unavailable": "Android वर Chrome किंवा iPhone वर Safari वापरा.",
+  "pwa.install.settingsHint": "जलद प्रवेशासाठी होम स्क्रीनवर जोडा.",
+  "pwa.install.showSteps": "पायऱ्या दाखवा",
+  "pwa.install.settingsTitle": "अ‍ॅप इन्स्टॉल करा",
 };
 
 const hi: Messages = {
@@ -189,6 +213,18 @@ const hi: Messages = {
   "admin.dashboard": "आँकड़े",
   "video.audioOnly": "कम डेटा (केवल ऑडियो)",
   "offline.queued": "अपलोड प्रतीक्षा में",
+  "pwa.install.title": "Setu फोन पर इंस्टॉल करें",
+  "pwa.install.subtitle": "ऐप जैसा पूर्ण स्क्रीन — ऑफलाइन अपलोड के लिए।",
+  "pwa.install.android": "ऐप इंस्टॉल करें",
+  "pwa.install.later": "बाद में",
+  "pwa.install.dismiss": "बंद करें",
+  "pwa.install.ios.step1": "Safari में Share बटन दबाएँ",
+  "pwa.install.ios.step2": "नीचे स्क्रॉल कर Add to Home Screen चुनें",
+  "pwa.install.installed": "इस डिवाइस पर Setu इंस्टॉल है।",
+  "pwa.install.unavailable": "Android पर Chrome या iPhone पर Safari उपयोग करें।",
+  "pwa.install.settingsHint": "तेज़ पहुँच के लिए होम स्क्रीन पर जोड़ें।",
+  "pwa.install.showSteps": "चरण दिखाएँ",
+  "pwa.install.settingsTitle": "ऐप इंस्टॉल करें",
 };
 
 const tables: Record<Locale, Messages> = { en, mr, hi };

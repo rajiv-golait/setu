@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { getProviderPublic, listProviderSlots } from "@/lib/api";
 import type { AppointmentSlot, ProviderRecord } from "@/lib/types";
 
@@ -25,17 +26,20 @@ export default function DoctorProfilePage() {
   }
 
   return (
-    <div className="animate-setu-fade px-5 pb-24 pt-5">
-      <h1 className="text-2xl font-semibold">{doctor.display_name}</h1>
-      <p className="text-sm text-text-muted">{doctor.specialty}</p>
-      {doctor.bio && <p className="mt-3 text-sm">{doctor.bio}</p>}
+    <div className="px-5 pb-24 pt-5">
+      <ScreenHeader
+        mode="toolbar"
+        backHref="/doctors"
+        backLabel="Directory"
+        title={doctor.display_name ?? "Doctor"}
+      />
+      {doctor.specialty && <p className="mt-1 text-sm text-text-muted">{doctor.specialty}</p>}
+      {doctor.bio && <p className="text-sm">{doctor.bio}</p>}
       {doctor.consultation_fee != null && (
         <p className="mt-2 text-sm font-semibold">Fee: ₹{doctor.consultation_fee}</p>
       )}
 
-      <h2 className="mb-2 mt-8 text-sm font-semibold uppercase text-text-muted">
-        Available slots
-      </h2>
+      <SectionHeading title="Available slots" className="mt-8" />
       <div className="space-y-2">
         {slots.map((s) => (
           <button
@@ -65,9 +69,6 @@ export default function DoctorProfilePage() {
       >
         Book consultation
       </PrimaryButton>
-      <Link href="/doctors" className="mt-4 block text-center text-sm font-semibold text-primary">
-        Back to directory
-      </Link>
     </div>
   );
 }

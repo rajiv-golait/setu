@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AdminShell } from "@/components/layout/role-shells";
+import { BackLink } from "@/components/ui/back-link";
+import { PageHeader } from "@/components/ui/page-header";
+import { WarmCard } from "@/components/ui/warm-card";
 import {
   getAdminProvider,
   listAdminProviderCredentials,
@@ -44,21 +46,20 @@ export default function AdminDoctorDetailPage() {
 
   return (
     <AdminShell>
-      <Link href="/admin/doctors" className="text-sm font-semibold text-primary">
-        ← All doctors
-      </Link>
+      <BackLink href="/admin/doctors" label="All doctors" />
       {!doctor ? (
         <p className="mt-4 text-sm text-text-muted">{error ?? "Loading…"}</p>
       ) : (
         <>
-          <h1 className="mt-4 text-xl font-semibold">{doctor.display_name || "Doctor"}</h1>
-          <p className="text-sm text-text-muted">{doctor.phone}</p>
+          <PageHeader
+            title={doctor.display_name || "Doctor"}
+            subtitle={
+              [doctor.specialty, doctor.facility].filter(Boolean).join(" · ") ||
+              doctor.phone ||
+              undefined
+            }
+          />
           <p className="mt-1 text-sm capitalize">Status: {doctor.verification_status ?? "pending"}</p>
-          {(doctor.specialty || doctor.facility) && (
-            <p className="mt-1 text-sm text-text-muted">
-              {[doctor.specialty, doctor.facility].filter(Boolean).join(" · ")}
-            </p>
-          )}
           <div className="mt-4 flex flex-wrap gap-3">
             {doctor.verification_status !== "approved" && (
               <button
@@ -88,15 +89,14 @@ export default function AdminDoctorDetailPage() {
           ) : (
             <ul className="mt-2 space-y-2">
               {creds.map((c) => (
-                <li
-                  key={c.id}
-                  className="rounded-card border border-border bg-surface-raised p-3 text-sm"
-                >
-                  <span className="font-semibold">{c.doc_type}</span>
-                  <span className="ml-2 capitalize text-text-muted">{c.status}</span>
-                  <span className="ml-2 text-xs text-text-faint">
-                    {new Date(c.created_at).toLocaleDateString("en-IN")}
-                  </span>
+                <li key={c.id}>
+                  <WarmCard className="text-sm">
+                    <span className="font-semibold">{c.doc_type}</span>
+                    <span className="ml-2 capitalize text-text-muted">{c.status}</span>
+                    <span className="ml-2 text-xs text-text-faint">
+                      {new Date(c.created_at).toLocaleDateString("en-IN")}
+                    </span>
+                  </WarmCard>
                 </li>
               ))}
             </ul>

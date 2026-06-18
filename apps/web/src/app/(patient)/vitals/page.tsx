@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { VitalTrendChart, formatVitalValue } from "@/components/vitals/vital-trend-chart";
 import { createVital, listVitals } from "@/lib/api";
+import { BackLink } from "@/components/ui/back-link";
+import { ScreenHeader } from "@/components/ui/screen-header";
 import { usePatient } from "@/lib/hooks/use-patient";
 import { useLocale } from "@/lib/hooks/use-locale";
 import type { VitalReading, VitalType } from "@/lib/types";
 
 export default function VitalsPage() {
-  const router = useRouter();
   const { patient, ensurePatient } = usePatient();
   const { t } = useLocale();
   const [readings, setReadings] = useState<VitalReading[]>([]);
@@ -63,19 +62,9 @@ export default function VitalsPage() {
   };
 
   return (
-    <div className="animate-setu-fade px-5 pb-8 pt-4">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-4 flex items-center gap-2 text-sm font-semibold text-primary"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back
-      </button>
-
-      <h1 className="text-[23px] font-semibold">{t("vitals.title")}</h1>
-      <p className="mt-1 text-sm text-text-muted">
-        For your records only — not a diagnosis.
-      </p>
+    <div className="px-5 pb-8 pt-4">
+      <BackLink />
+      <ScreenHeader title={t("vitals.title")} subtitle="For your records only — not a diagnosis." />
 
       <div className="mt-5 flex flex-wrap gap-2">
         {(

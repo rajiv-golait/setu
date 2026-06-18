@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { AdminShell } from "@/components/layout/role-shells";
+import { BackLink } from "@/components/ui/back-link";
+import { DataRow, DataTable } from "@/components/ui/data-table";
+import { PageHeader } from "@/components/ui/page-header";
 import { listAdminPatients } from "@/lib/api";
 import type { PatientRecord } from "@/lib/types";
 
@@ -29,9 +31,10 @@ export default function AdminPatientsPage() {
 
   return (
     <AdminShell>
-      <p className="text-sm text-text-muted">
-        Registered patients across the platform. Use worker or patient apps for clinical actions.
-      </p>
+      <PageHeader
+        title="Patients"
+        subtitle="Registered patients across the platform."
+      />
       {error && <p className="mt-4 text-sm text-danger">{error}</p>}
       <div className="mt-6">
         {loading ? (
@@ -39,27 +42,22 @@ export default function AdminPatientsPage() {
         ) : patients.length === 0 ? (
           <p className="text-sm text-text-muted">No patients yet.</p>
         ) : (
-          <ul className="space-y-3">
+          <DataTable>
             {patients.map((p) => (
-              <li
-                key={p.id}
-                className="rounded-card border border-border bg-surface-raised p-4"
-              >
-                <p className="font-semibold">{p.display_name || "Patient"}</p>
-                <p className="text-sm text-text-muted">{p.id}</p>
-                <p className="mt-1 text-xs text-text-faint">
-                  Lang: {p.lang_pref} · Joined {new Date(p.created_at).toLocaleDateString("en-IN")}
-                </p>
-              </li>
+              <DataRow key={p.id}>
+                <div>
+                  <p className="font-semibold">{p.display_name || "Patient"}</p>
+                  <p className="text-sm text-text-muted">{p.id}</p>
+                  <p className="mt-1 text-xs text-text-faint">
+                    Lang: {p.lang_pref} · Joined {new Date(p.created_at).toLocaleDateString("en-IN")}
+                  </p>
+                </div>
+              </DataRow>
             ))}
-          </ul>
+          </DataTable>
         )}
       </div>
-      <p className="mt-6 text-xs text-text-faint">
-        <Link href="/admin" className="text-primary">
-          ← Back to overview
-        </Link>
-      </p>
+      <BackLink href="/admin" label="Overview" className="mt-6" />
     </AdminShell>
   );
 }

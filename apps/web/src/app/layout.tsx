@@ -3,6 +3,7 @@ import { Baloo_2, IBM_Plex_Mono, Mukta } from "next/font/google";
 import { PatientProvider } from "@/lib/hooks/use-patient";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
 import { LocaleHtmlLang } from "@/components/layout/locale-html-lang";
+import { PwaInstallGate } from "@/components/pwa/pwa-install-gate";
 import "./globals.css";
 
 // Baloo 2 — rounded, warm display + Saathi's voice. Covers Latin + Devanagari.
@@ -31,9 +32,19 @@ const ibmMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Setu — a bridge to your doctor",
   description: "Understand medical documents in your language. Share a doctor-ready brief.",
-  icons: { icon: "/icon.svg" },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, title: "Setu" },
+  appleWebApp: {
+    capable: true,
+    title: "Setu",
+    statusBarStyle: "black-translucent",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
@@ -51,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PatientProvider>
           <LocaleHtmlLang />
           <ServiceWorkerRegister />
+          <PwaInstallGate />
           {children}
         </PatientProvider>
       </body>

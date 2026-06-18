@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { deletePatientData, getAccessLog, getNotificationPreferences, updateNotificationPreference, withdrawConsent, createSupportTicket } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import { clearLocalConsent } from "@/lib/consent";
 import { ErrorPanel } from "@/components/ui/state-panel";
+import { BackLink } from "@/components/ui/back-link";
+import { ScreenHeader } from "@/components/ui/screen-header";
+import { InstallAppSettingsRow } from "@/components/pwa/install-app-prompt";
+import { useLocale } from "@/lib/hooks/use-locale";
 import {
   isSubscribed,
   pushFailureMessage,
@@ -17,6 +20,7 @@ import {
 import type { AccessLogEntry } from "@/lib/types";
 
 export default function SettingsPage() {
+  const { t } = useLocale();
   const { patient, ready, clearPatient } = usePatient();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -112,15 +116,12 @@ export default function SettingsPage() {
   if (!ready) return null;
 
   return (
-    <div className="animate-setu-fade px-5 pb-24 pt-5">
-      <Link href="/profile" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        Back
-      </Link>
-      <h1 className="text-[23px] font-semibold tracking-tight">Privacy & data</h1>
-      <p className="mt-1 text-sm text-text-muted">
-        Your documents are processed only with consent. Raw images are purged after the retention window.
-      </p>
+    <div className="px-5 pb-24 pt-5">
+      <BackLink href="/profile" />
+      <ScreenHeader
+        title="Privacy & data"
+        subtitle="Your documents are processed only with consent. You control what is shared."
+      />
 
       {done && (
         <div className="mt-4 rounded-card border border-success-border bg-success-bg p-4 text-sm text-success">
@@ -172,6 +173,13 @@ export default function SettingsPage() {
       )}
 
       <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+        <h2 className="text-sm font-semibold">{t("pwa.install.settingsTitle")}</h2>
+        <div className="mt-3">
+          <InstallAppSettingsRow />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
         <h2 className="text-sm font-semibold">Notification preferences</h2>
         <p className="mt-2 text-sm text-text-muted">
           Appointment reminders via SMS, email, or WhatsApp when configured.
@@ -214,7 +222,7 @@ export default function SettingsPage() {
 
       {accessLog.length > 0 && (
         <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
-          <h2 className="text-sm font-semibold">Who viewed my data</h2>
+          <h2 className="text-sm font-semibold">Data access history</h2>
           <ul className="mt-3 space-y-2 text-sm text-text-muted">
             {accessLog.slice(0, 10).map((e) => (
               <li key={e.id}>
@@ -227,7 +235,7 @@ export default function SettingsPage() {
       )}
 
       <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
-        <h2 className="text-sm font-semibold">Delete my uploaded documents</h2>
+        <h2 className="text-sm font-semibold">Remove my stored images</h2>
         <p className="mt-2 text-sm text-text-muted">
           Removes stored prescription and lab images for your account. This cannot be undone.
         </p>

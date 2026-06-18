@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { AuthBrand } from "@/components/auth/auth-brand";
 import { ensureDevAdmin } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
@@ -89,13 +90,13 @@ export default function AdminLoginPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-5 py-10 animate-setu-fade">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">Setu · Admin</p>
-      <h1 className="mt-1 text-[26px] font-semibold">Admin sign in</h1>
-      <p className="mt-2 text-sm text-text-muted">
-        Email and password for testing. Use this portal to set phone users as patient or doctor.
-      </p>
+      <AuthBrand
+        badge="Setu · Admin"
+        title="Admin sign in"
+        subtitle="Manage users, doctors, and platform operations."
+      />
 
-      <div className="mt-8 space-y-4">
+      <div className="space-y-4">
         <label className="block">
           <span className="text-sm font-semibold">Email</span>
           <input
