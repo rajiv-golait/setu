@@ -3,24 +3,14 @@
 import { useState } from "react";
 import { HeartHandshake, Pill, ShieldAlert } from "lucide-react";
 import { LabSparkline } from "@/components/ui/sparkline";
-import type { CurrentTruth } from "@/lib/types";
-
-interface BriefData {
-  one_line?: string;
-  chief_concern?: string;
-  active_medications?: Array<{ name?: string; dose?: string; frequency?: string; instructions?: string }>;
-  recent_labs?: Array<{ test?: string; value?: unknown; unit?: string; flag?: string }>;
-  active_conditions?: Array<{ condition?: string }>;
-  allergies?: Array<{ substance?: string; severity?: string }>;
-  suggested_questions?: string[];
-}
+import type { CurrentTruth, DoctorBrief } from "@/lib/types";
 
 interface MedChange { date: string | null; dose: string | null; dose_unit: string | null; frequency: string | null }
 interface LabPoint { value: unknown; unit: string | null; date: string | null; flag: string | null }
 interface VitalPoint { measured_at: string; value: Record<string, unknown>; flag: string | null }
 
 interface PatientContextPanelProps {
-  brief?: BriefData | null;
+  brief?: DoctorBrief | null;
   currentTruth?: CurrentTruth | null;
   patientName?: string | null;
   pastBriefs?: Array<{ brief_id: string; generated_at: string; one_line: string; chief_concern: string }>;
@@ -73,7 +63,7 @@ export function PatientContextPanel({
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{m.name ?? "Unknown"}</p>
                   <p className="text-xs text-text-muted">
-                    {[m.dose, m.frequency, m.instructions].filter(Boolean).join(" · ") || "As prescribed"}
+                    {[m.dose, m.frequency, m.since].filter(Boolean).join(" · ") || "As prescribed"}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, FileText } from "lucide-react";
@@ -10,6 +10,14 @@ import { getJob } from "@/lib/api";
 import type { JobStatus } from "@/lib/types";
 
 export default function BatchProgressPage() {
+  return (
+    <Suspense fallback={<div className="px-5 py-8 text-sm text-text-muted">Loading progress…</div>}>
+      <BatchProgressContent />
+    </Suspense>
+  );
+}
+
+function BatchProgressContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const jobIds = useMemo(
