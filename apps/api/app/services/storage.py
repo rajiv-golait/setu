@@ -5,7 +5,7 @@ import logging
 import os
 from typing import Protocol
 
-from app.config import settings
+from app.config import get_settings
 from app.ids import new_id
 
 logger = logging.getLogger("setu.storage")
@@ -27,8 +27,9 @@ class StorageBackend(Protocol):
 class LocalStorageBackend:
     def put(self, data: bytes, *, mime: str, doc_id: str | None = None) -> tuple[str, str | None]:
         doc_id = doc_id or new_id("doc")
-        os.makedirs(settings.STORAGE_PATH, exist_ok=True)
-        path = os.path.join(settings.STORAGE_PATH, f"{doc_id}{_EXT.get(mime, '')}")
+        root = get_settings().STORAGE_PATH
+        os.makedirs(root, exist_ok=True)
+        path = os.path.join(root, f"{doc_id}{_EXT.get(mime, '')}")
         with open(path, "wb") as f:
             f.write(data)
         return path, None
@@ -54,14 +55,15 @@ class S3StorageBackend:
     def __init__(self) -> None:
         import boto3
 
-        kwargs: dict = {"region_name": settings.S3_REGION}
-        if settings.AWS_ACCESS_KEY_ID:
-            kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
-            kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
-        if settings.S3_ENDPOINT_URL:
-            kwargs["endpoint_url"] = settings.S3_ENDPOINT_URL
+        cfg = get_settings()
+        kwargs: dict = {"region_name": cfg.S3_REGION}
+        if cfg.AWS_ACCESS_KEY_ID:
+            kwargs["aws_access_key_id"] = cfg.AWS_ACCESS_KEY_ID
+            kwargs["aws_secret_access_key"] = cfg.AWS_SECRET_ACCESS_KEY
+        if cfg.S3_ENDPOINT_URL:
+            kwargs["endpoint_url"] = cfg.S3_ENDPOINT_URL
         self._client = boto3.client("s3", **kwargs)
-        self._bucket = settings.S3_BUCKET
+        self._bucket = cfg.S3_BUCKET
 
     def put(self, data: bytes, *, mime: str, doc_id: str | None = None) -> tuple[str, str | None]:
         doc_id = doc_id or new_id("doc")
@@ -92,6 +94,7 @@ class S3StorageBackend:
 
 
 def get_storage() -> StorageBackend:
-    if settings.STORAGE_BACKEND == "s3" and settings.S3_BUCKET:
+    cfg = get_settings()
+    if cfg.STORAGE_BACKEND == "s3" and cfg.S3_BUCKET:
         return S3StorageBackend()
     return LocalStorageBackend()

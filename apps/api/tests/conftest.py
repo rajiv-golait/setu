@@ -4,9 +4,11 @@ with zero external services. Mock providers keep it GPU-free.
 from __future__ import annotations
 
 import os
+import tempfile
 
-# Satisfy required DATABASE_URL before app.config loads (tests use SQLite via monkeypatch).
+# Must run before any `app.config` import — .env / CI may set /data/uploads (not writable).
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@127.0.0.1:1/unused")
+os.environ["STORAGE_PATH"] = tempfile.mkdtemp(prefix="setu-pytest-uploads-")
 
 import json
 
@@ -51,12 +53,14 @@ def _disable_supabase_auth(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _writable_storage_path(tmp_path, monkeypatch):
-    """CI and local dev may default STORAGE_PATH to /data/uploads (not writable)."""
+    """Per-test writable upload dir (overrides /data/uploads from .env or Docker defaults)."""
     from app import config
 
     upload_dir = tmp_path / "uploads"
     upload_dir.mkdir(exist_ok=True)
-    monkeypatch.setattr(config.settings, "STORAGE_PATH", str(upload_dir))
+    path = str(upload_dir)
+    monkeypatch.setenv("STORAGE_PATH", path)
+    monkeypatch.setattr(config.settings, "STORAGE_PATH", path)
 
 
 @pytest.fixture(autouse=True)
