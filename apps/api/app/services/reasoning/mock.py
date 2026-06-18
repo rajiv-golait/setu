@@ -170,7 +170,6 @@ class MockReasoner(ReasonerProvider):
         if med_names:
             parts.append(f"{' आणि '.join(med_names[:2])} सुरू आहेत.")
         parts.append("कृपया डॉक्टरांशी बोला.")
-        parts.append("हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही.")
         return " ".join(parts)
 
     def _explain_hi(self, labs, meds) -> str:  # noqa: ANN001
@@ -192,7 +191,6 @@ class MockReasoner(ReasonerProvider):
         if med_names:
             parts.append(f"{' और '.join(med_names[:2])} चल रही हैं।")
         parts.append("कृपया डॉक्टर से बात करें।")
-        parts.append("यह आपके दस्तावेज़ का स्पष्टीकरण है, चिकित्सीय सलाह नहीं।")
         return " ".join(parts)
 
     def _explain_en(self, labs, meds) -> str:  # noqa: ANN001
@@ -205,7 +203,6 @@ class MockReasoner(ReasonerProvider):
         if not parts:
             parts.append("No major issues were found in your report.")
         parts.append("Please speak with your doctor.")
-        parts.append("This is an explanation of your document, not medical advice.")
         return " ".join(parts)
 
     async def generate_summary(self, current_truth: CurrentTruthDTO, brief: dict, lang: str) -> dict:

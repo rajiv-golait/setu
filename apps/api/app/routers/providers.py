@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Appointment, Encounter, Patient, Provider, ProviderCredential
@@ -132,11 +132,20 @@ async def provider_dashboard(
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
 
+    pending_filter = or_(
+        Appointment.provider_id == provider.id,
+        (
+            Appointment.provider_id.is_(None)
+            & (Appointment.specialty == provider.specialty)
+            if provider.specialty
+            else False
+        ),
+    )
     pending = (
         await db.execute(
             select(func.count())
             .select_from(Appointment)
-            .where(Appointment.status == "requested", Appointment.provider_id == provider.id)
+            .where(Appointment.status == "requested", pending_filter)
         )
     ).scalar_one()
 

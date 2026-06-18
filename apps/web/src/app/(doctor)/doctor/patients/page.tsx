@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DoctorShell } from "@/components/layout/role-shells";
 import { listProviderPatients } from "@/lib/api";
 
 export default function DoctorPatientsPage() {
@@ -13,7 +12,7 @@ export default function DoctorPatientsPage() {
   }, []);
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Patients</h1>
       <p className="mt-1 text-sm text-text-muted">People you have consulted or have upcoming visits with.</p>
       <ul className="mt-6 space-y-3">
@@ -36,6 +35,6 @@ export default function DoctorPatientsPage() {
       <Link href="/doctor" className="mt-6 inline-block text-sm font-semibold text-primary">
         Back to dashboard
       </Link>
-    </DoctorShell>
+    </>
   );
 }

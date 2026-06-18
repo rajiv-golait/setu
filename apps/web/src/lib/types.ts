@@ -287,6 +287,8 @@ export interface Appointment {
   updated_at: string;
   provider_name?: string | null;
   provider_specialty?: string | null;
+  patient_display_name?: string | null;
+  chief_concern?: string | null;
 }
 
 // --- Vitals (F5) ---
@@ -343,6 +345,18 @@ export interface AnalyticsOverview {
   avg_consultation_minutes?: number | null;
 }
 
+// --- Patient context (doctor appointment view) ---
+
+export interface PatientContext {
+  patient_id: string;
+  brief: Record<string, unknown> | null;
+  current_truth: CurrentTruth | null;
+  past_briefs: Array<{ brief_id: string; generated_at: string; one_line: string; chief_concern: string }>;
+  med_history: Record<string, Array<{ date: string | null; dose: string | null; dose_unit: string | null; frequency: string | null; confidence: number }>>;
+  lab_trends: Record<string, Array<{ value: unknown; unit: string | null; date: string | null; flag: string | null }>>;
+  vital_trends: Record<string, Array<{ measured_at: string; value: Record<string, unknown>; flag: string | null }>>;
+}
+
 // --- Access audit ---
 
 export interface AccessLogEntry {
@@ -351,4 +365,35 @@ export interface AccessLogEntry {
   action: string;
   resource: string;
   created_at: string;
+}
+
+
+export interface PatientContext {
+  patient_id: string;
+  brief: Record<string, unknown> | null;
+  current_truth: CurrentTruth | null;
+  past_briefs: Array<{
+    brief_id: string;
+    generated_at: string;
+    one_line: string;
+    chief_concern: string;
+  }>;
+  med_history: Record<string, Array<{
+    date: string | null;
+    dose: string | null;
+    dose_unit: string | null;
+    frequency: string | null;
+    confidence: number;
+  }>>;
+  lab_trends: Record<string, Array<{
+    value: unknown;
+    unit: string | null;
+    date: string | null;
+    flag: string | null;
+  }>>;
+  vital_trends: Record<string, Array<{
+    measured_at: string;
+    value: Record<string, unknown>;
+    flag: string | null;
+  }>>;
 }

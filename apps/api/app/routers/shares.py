@@ -59,6 +59,32 @@ def _with_audience(snapshot: ShareSnapshotDTO, view: str | None) -> ShareSnapsho
     return snapshot.model_copy(update={"audience": audience})
 
 
+def _share_dto_from_row(row) -> ShareDTO:
+    url = share_url(row.token)
+    return ShareDTO(
+        share_id=row.id,
+        token=row.token,
+        url=url,
+        qr_svg=make_qr_svg(url),
+        created_at=row.created_at,
+        expires_at=row.expires_at,
+    )
+
+
+@router.get("/patients/{patient_id}/share", response_model=ShareDTO)
+async def get_latest_patient_share(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> ShareDTO:
+    """Latest valid share link + QR for this patient (created during upload or on /share)."""
+    patient = await _check_patient_access(patient_id, db, auth_user_id)
+    row = await persistence.latest_share(db, patient.id)
+    if row is None:
+        raise not_found("Share", patient_id)
+    return _share_dto_from_row(row)
+
+
 @router.post("/shares", response_model=ShareDTO, status_code=201)
 async def create_share(
     body: ShareCreateRequest,
@@ -87,15 +113,7 @@ async def create_share(
     row.snapshot_json["expires_at"] = row.expires_at.isoformat() if row.expires_at else None
     await db.commit()
 
-    url = share_url(row.token)
-    return ShareDTO(
-        share_id=row.id,
-        token=row.token,
-        url=url,
-        qr_svg=make_qr_svg(url),
-        created_at=row.created_at,
-        expires_at=row.expires_at,
-    )
+    return _share_dto_from_row(row)
 
 
 @router.get("/shares/{token}", response_model=ShareSnapshotDTO)

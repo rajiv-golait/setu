@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { grantAdminProvider, listAdminProviders, revokeAdminProvider, verifyAdminProvider } from "@/lib/api";
+import { MEDICAL_SPECIALTIES } from "@/lib/specialties";
 import type { AdminProviderRecord } from "@/lib/types";
 
 export default function AdminDoctorsPage() {
@@ -13,7 +14,7 @@ export default function AdminDoctorsPage() {
   const [error, setError] = useState<string | null>(null);
   const [phone, setPhone] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [specialty, setSpecialty] = useState("");
+  const [specialty, setSpecialty] = useState<string>(MEDICAL_SPECIALTIES[0]);
   const [facility, setFacility] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -45,7 +46,7 @@ export default function AdminDoctorsPage() {
       });
       setPhone("");
       setDisplayName("");
-      setSpecialty("");
+      setSpecialty(MEDICAL_SPECIALTIES[0]);
       setFacility("");
       await load();
     } catch (e) {
@@ -123,12 +124,17 @@ export default function AdminDoctorsPage() {
           </label>
           <label className="block">
             <span className="text-sm font-semibold">Specialty</span>
-            <input
+            <select
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
-              placeholder="dermatology"
               className="mt-1 w-full rounded-card border border-border bg-surface px-3 py-2"
-            />
+            >
+              {MEDICAL_SPECIALTIES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block sm:col-span-2">
             <span className="text-sm font-semibold">Facility</span>

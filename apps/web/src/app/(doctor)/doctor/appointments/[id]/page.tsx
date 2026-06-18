@@ -3,137 +3,213 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { DoctorShell } from "@/components/layout/role-shells";
+import { PenLine } from "lucide-react";
 import { CancelDialog } from "@/components/appointments/cancel-dialog";
 import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
+import { DeclineDialog } from "@/components/doctor/decline-dialog";
+import { DoctorCaseHeader } from "@/components/doctor/doctor-case-header";
+import { DoctorTimelineSidebar } from "@/components/doctor/doctor-timeline-sidebar";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { PatientContextPanel } from "@/components/PatientContextPanel";
+import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import {
+  doctorAppointmentAction,
   getAppointment,
   getAppointmentPatientContext,
+  getPatientTimeline,
   listEncountersForPatient,
-  patchAppointment,
 } from "@/lib/api";
-import { SecondaryButton } from "@/components/ui/buttons";
-import type { Appointment } from "@/lib/types";
+import type { Appointment, PatientContext, TimelineEvent } from "@/lib/types";
+
+const ACTIVE_STATUSES = new Set(["accepted", "confirmed"]);
 
 export default function DoctorAppointmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [encounterId, setEncounterId] = useState<string | null>(null);
   const [showReschedule, setShowReschedule] = useState(false);
-  const [patientContext, setPatientContext] = useState<{ brief?: unknown; current_truth?: unknown } | null>(null);
+  const [patientContext, setPatientContext] = useState<PatientContext | null>(null);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = () => {
     const apptP = getAppointment(id);
     const ctxP = getAppointmentPatientContext(id).catch(() => null);
 
-    Promise.all([apptP, ctxP]).then(([found, ctx]) => {
-      setAppt(found ?? null);
-      setPatientContext(ctx);
-      if (found?.patient_id) {
-        listEncountersForPatient(found.patient_id)
-          .then((encs) => {
-            const match = encs.find((e) => e.appointment_id === id);
-            if (match) setEncounterId(match.id);
-          })
-          .catch(() => undefined);
-      }
-    }).catch(() => setAppt(null));
+    Promise.all([apptP, ctxP])
+      .then(([found, ctx]) => {
+        setAppt(found ?? null);
+        setPatientContext(ctx);
+        if (found?.patient_id) {
+          getPatientTimeline(found.patient_id)
+            .then(setTimeline)
+            .catch(() => setTimeline([]));
+          listEncountersForPatient(found.patient_id)
+            .then((encs) => {
+              const match = encs.find((e) => e.appointment_id === id);
+              if (match) setEncounterId(match.id);
+            })
+            .catch(() => undefined);
+        }
+      })
+      .catch(() => setAppt(null));
   };
 
   useEffect(() => {
     refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
   }, [id]);
 
   const act = async (action: string, opts?: { reason?: string }) => {
     if (!appt) return;
-    const updated = await patchAppointment(appt.id, action, opts);
-    setAppt(updated);
+    setActionError(null);
+    try {
+      const updated = await doctorAppointmentAction(appt.id, action, opts);
+      setAppt(updated);
+      if (action === "complete" || action === "cancel") {
+        setShowReschedule(false);
+      }
+      refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not update appointment");
+      refresh();
+    }
   };
 
+  const brief = patientContext?.brief as Parameters<typeof PatientContextPanel>[0]["brief"];
+  const isActive = appt ? ACTIVE_STATUSES.has(appt.status) : false;
+
   return (
-    <DoctorShell>
+    <>
       {!appt ? (
         <p className="text-sm text-text-muted">Loading…</p>
       ) : (
         <>
           <Link href="/doctor/appointments" className="text-sm font-semibold text-primary">
-            ← Back
-          </Link>
-          <h1 className="mt-4 text-xl font-semibold">{appt.specialty}</h1>
-          <p className="text-sm text-text-muted">Patient {appt.patient_id}</p>
-          <p className="mt-1 capitalize text-sm">Status: {appt.status}</p>
-          <Link
-            href={`/doctor/patients/${appt.patient_id}`}
-            className="mt-2 inline-block text-sm font-semibold text-primary"
-          >
-            View patient record →
+            ← Back to appointments
           </Link>
 
-          {appt.status === "requested" && (
-            <div className="mt-4 flex gap-2">
-              <SecondaryButton onClick={() => act("accept")}>Accept</SecondaryButton>
-              <SecondaryButton onClick={() => act("decline")}>Decline</SecondaryButton>
+          <div className="mt-4 lg:grid lg:grid-cols-3 lg:gap-6">
+            <div className="lg:col-span-2">
+              <DoctorCaseHeader
+                appt={appt}
+                chiefConcern={brief?.chief_concern}
+                patientName={appt.patient_display_name}
+              />
+
+              {actionError && (
+                <p className="mt-3 text-sm text-danger">{actionError}</p>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {appt.status === "requested" && (
+                  <>
+                    <PrimaryButton onClick={() => act("accept")}>Accept</PrimaryButton>
+                    <DeclineDialog onConfirm={(reason) => act("decline", { reason })} />
+                  </>
+                )}
+                {appt.status === "completed" && (
+                  <p className="w-full text-sm font-medium text-success">
+                    Consultation completed.
+                  </p>
+                )}
+                <Link
+                  href={`/doctor/patients/${appt.patient_id}`}
+                  className="inline-flex items-center rounded-full border border-border px-4 py-2 text-sm font-semibold text-primary"
+                >
+                  Patient record
+                </Link>
+              </div>
+
+              {appt.consult_room && !["completed", "cancelled", "declined"].includes(appt.status) && (
+                <div className="mt-4">
+                  <VideoConsult
+                    roomName={appt.consult_room}
+                    joinLabel="Start video consultation"
+                    appointmentId={appt.id}
+                    onJoin={() => act("confirm").catch(() => undefined)}
+                  />
+                </div>
+              )}
+
+              {encounterId && (
+                <Link
+                  href={`/doctor/consultations/${encounterId}`}
+                  className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-primary"
+                >
+                  <PenLine className="h-4 w-4" /> Open consultation notes
+                </Link>
+              )}
+
+              {patientContext && (
+                <div className="mt-6">
+                  <PatientContextPanel
+                    brief={brief}
+                    currentTruth={
+                      patientContext.current_truth as Parameters<
+                        typeof PatientContextPanel
+                      >[0]["currentTruth"]
+                    }
+                    patientName={appt.patient_display_name}
+                    pastBriefs={patientContext.past_briefs}
+                    medHistory={patientContext.med_history}
+                    labTrends={patientContext.lab_trends}
+                    vitalTrends={patientContext.vital_trends}
+                  />
+                </div>
+              )}
+
+              {isActive && (
+                <div className="mt-6 space-y-2 border-t border-border pt-4">
+                  <SecondaryButton onClick={() => act("complete")}>Mark completed</SecondaryButton>
+                  <SecondaryButton
+                    onClick={() => act("no_show", { reason: "Patient did not join" })}
+                  >
+                    Mark no-show
+                  </SecondaryButton>
+                  <SecondaryButton onClick={() => setShowReschedule((v) => !v)}>
+                    Reschedule
+                  </SecondaryButton>
+                  {showReschedule && appt.provider_id && (
+                    <RescheduleFlow
+                      appointmentId={appt.id}
+                      providerId={appt.provider_id}
+                      onDone={refresh}
+                    />
+                  )}
+                  <CancelDialog
+                    key={appt.status}
+                    onConfirm={async (reason) => {
+                      await act("cancel", { reason });
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          )}
 
-          {appt.consult_room && !["completed", "cancelled", "declined"].includes(appt.status) && (
-            <VideoConsult
-              roomName={appt.consult_room}
-              joinLabel="Start video consultation"
-              appointmentId={appt.id}
-              onJoin={() => act("confirm").catch(() => undefined)}
-            />
-          )}
+            <aside className="mt-6 lg:mt-0">
+              <DoctorTimelineSidebar events={timeline} />
+            </aside>
+          </div>
 
-          {encounterId && (
+          {encounterId && appt.status !== "completed" && (
             <Link
               href={`/doctor/consultations/${encounterId}`}
-              className="mt-4 inline-block text-sm font-semibold text-primary"
+              className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-white shadow-lg"
             >
-              Open consultation notes →
+              <PenLine className="h-4 w-4" /> Take notes
             </Link>
-          )}
-
-          {patientContext && (
-            <div className="mt-6">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary-light">
-                Patient Context
-              </p>
-              <PatientContextPanel
-                brief={patientContext.brief as Parameters<typeof PatientContextPanel>[0]["brief"]}
-                currentTruth={patientContext.current_truth as Parameters<typeof PatientContextPanel>[0]["currentTruth"]}
-              />
-            </div>
-          )}
-
-          {["accepted", "confirmed"].includes(appt.status) && (
-            <>
-              <SecondaryButton className="mt-4" onClick={() => act("complete")}>
-                Mark completed
-              </SecondaryButton>
-              <SecondaryButton
-                className="mt-2"
-                onClick={() => act("no_show", { reason: "Patient did not join" })}
-              >
-                Mark no-show
-              </SecondaryButton>
-              <SecondaryButton className="mt-2" onClick={() => setShowReschedule((v) => !v)}>
-                Reschedule
-              </SecondaryButton>
-              {showReschedule && appt.provider_id && (
-                <RescheduleFlow
-                  appointmentId={appt.id}
-                  providerId={appt.provider_id}
-                  onDone={refresh}
-                />
-              )}
-              <CancelDialog onConfirm={(reason) => act("cancel", { reason })} />
-            </>
           )}
         </>
       )}
-    </DoctorShell>
+    </>
   );
 }

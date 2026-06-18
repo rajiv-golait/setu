@@ -37,7 +37,7 @@ export function ChatBubble({ role, content, action, showAvatar = true }: ChatBub
   if (isUser) {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-sm bg-primary px-4 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap">
+        <div className="max-w-[88%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2.5 text-sm leading-relaxed text-white whitespace-pre-wrap">
           {content}
         </div>
       </div>
@@ -48,14 +48,14 @@ export function ChatBubble({ role, content, action, showAvatar = true }: ChatBub
 
   return (
     <div className="flex items-start gap-2">
-      <div className="w-8 shrink-0 pt-1">
+      <div className="w-7 shrink-0 pt-0.5">
         {showAvatar && (
-          <SaathiAvatar state={concerned ? "concerned" : "idle"} size={32} label={null} />
+          <SaathiAvatar state={concerned ? "concerned" : "idle"} size={28} label={null} />
         )}
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 max-w-[88%]">
         {actionBanner}
-        <div className="rounded-2xl rounded-tl-sm border border-saathi-border bg-saathi-bg px-4 py-3 text-sm leading-relaxed text-text whitespace-pre-wrap">
+        <div className="rounded-2xl rounded-tl-sm border border-saathi-border bg-saathi-bg px-3.5 py-2.5 text-sm leading-relaxed text-text whitespace-pre-wrap">
           {content}
         </div>
       </div>

@@ -1,12 +1,13 @@
 """Saathi — grounded patient chatbot.
 
-Answers questions only from the patient's own CurrentTruth data.
+Answers questions from the patient's CurrentTruth when possible.
 Never diagnoses, never prescribes, never suggests changing a dose.
 Red-flag keywords short-circuit to an emergency referral with no model call.
 """
 from __future__ import annotations
 
 import logging
+import re
 from typing import Literal
 
 from pydantic import BaseModel
@@ -22,6 +23,7 @@ logger = logging.getLogger("setu.saathi")
 _HARD_BOUNDARIES = (
     "You are Saathi, a health assistant for rural India. "
     "You ONLY answer based on the patient data provided below. "
+    "If the patient asks who you are, introduce yourself briefly as their health companion. "
     "NEVER diagnose any condition. "
     "NEVER prescribe or suggest any medication. "
     "NEVER tell the patient to change, stop, or start any dose. "
@@ -33,19 +35,55 @@ _HARD_BOUNDARIES = (
 _EMERGENCY_REPLY: dict[str, str] = {
     "mr": (
         "हे गंभीर लक्षण आहे. लगेच जवळच्या रुग्णालयात जा किंवा 112 वर कॉल करा. "
-        "वाट पाहू नका.\n\n"
-        "हे तुमच्या कागदाचे स्पष्टीकरण आहे, वैद्यकीय सल्ला नाही. डॉक्टरांशी बोला."
+        "वाट पाहू नका."
     ),
     "hi": (
         "यह एक गंभीर लक्षण है। तुरंत नज़दीकी अस्पताल जाएं या 112 पर कॉल करें। "
-        "देरी न करें।\n\n"
-        "यह आपके दस्तावेज़ का स्पष्टीकरण है, चिकित्सीय सलाह नहीं। डॉक्टर से बात करें।"
+        "देरी न करें।"
     ),
     "en": (
         "This is an urgent symptom. Go to the nearest hospital immediately or call 112. "
-        "Do not wait.\n\n"
-        "This is an explanation of your document, not medical advice. Please speak with your doctor."
+        "Do not wait."
     ),
+}
+
+_IDENTITY_REPLY: dict[str, str] = {
+    "mr": (
+        "मी साथी — तुमचा आरोग्य सोबती. "
+        "तुमच्या नोंदींमधील औषधे आणि रिपोर्ट सोप्या भाषेत समजावून सांगते. "
+        "निदान किंवा दवा बदलण्याचा सल्ला देत नाही — ते डॉक्टरांकडे."
+    ),
+    "hi": (
+        "मैं साथी हूँ — आपका सेहत साथी। "
+        "आपके रिकॉर्ड की दवाइयाँ और रिपोर्ट आसान भाषा में समझाती हूँ। "
+        "निदान या दवा बदलने की सलाह नहीं देती — वह डॉक्टर के पास।"
+    ),
+    "en": (
+        "I'm Saathi — your health companion. "
+        "I explain your medicines and reports from your records in simple words. "
+        "I don't diagnose or tell you to change doses — that's for your doctor."
+    ),
+}
+
+_EMPTY_DATA_REPLY: dict[str, str] = {
+    "mr": (
+        "अजून तुमच्या नोंदी रिकाम्या आहेत. एक प्रिस्क्रिप्शन किंवा रिपोर्ट अपलोड केल्यावर "
+        "मी तुमच्या औषधांबद्दल विचारू शकता."
+    ),
+    "hi": (
+        "अभी आपके रिकॉर्ड खाली हैं। कोई प्रिस्क्रिप्शन या रिपोर्ट अपलोड करने के बाद "
+        "आप अपनी दवाइयों के बारे में पूछ सकते हैं।"
+    ),
+    "en": (
+        "Your records are still empty. After you upload a prescription or report, "
+        "you can ask me about your medicines here."
+    ),
+}
+
+_GEMINI_ERROR_REPLY: dict[str, str] = {
+    "mr": "माफ करा, सध्या माझ्या नोंदी वाचता येत नाहीत. थोड्या वेळाने पुन्हा प्रयत्न करा.",
+    "hi": "माफ़ करें, अभी मेरे नोट्स नहीं पढ़ पा रही। थोड़ी देर बाद फिर कोशिश करें।",
+    "en": "Sorry — I can't read my notes right now. Please try again in a moment.",
 }
 
 _RED_FLAG_KEYWORDS: tuple[str, ...] = (
@@ -57,6 +95,18 @@ _RED_FLAG_KEYWORDS: tuple[str, ...] = (
     "छाती में दर्द", "सांस नहीं", "बेहोश", "दौरा", "हृदयघात", "हृदयविकाराचा झटका",
     # Marathi
     "छाती दुखणे", "श्वास घेता येत नाही", "बेशुद्ध",
+)
+
+_IDENTITY_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"\bwho\s+are\s+(you|u)\b",
+        r"\bwhat\s+are\s+(you|u)\b",
+        r"\bwhat\s+is\s+saathi\b",
+        r"तुम्ही\s+कोण",
+        r"आप\s+कौन",
+        r"साथी\s+कोण",
+    )
 )
 
 SaathiAction = Literal["none", "urgent_care", "see_doctor", "monitor"]
@@ -105,6 +155,54 @@ def _strip_banned(text: str) -> str:
     return text
 
 
+def _is_identity_question(message: str) -> bool:
+    return any(p.search(message) for p in _IDENTITY_PATTERNS)
+
+
+def _gemini_role(role: str) -> str:
+    return "model" if role == "assistant" else "user"
+
+
+def _build_gemini_contents(history: list[dict], message: str, lang_name: str) -> list:
+    from google.genai import types
+
+    turns = history[-6:]
+    if (
+        turns
+        and turns[-1].get("role") == "user"
+        and turns[-1].get("content", "").strip() == message.strip()
+    ):
+        turns = turns[:-1]
+
+    contents: list[types.Content] = []
+    for turn in turns:
+        text = str(turn.get("content", "")).strip()
+        if not text:
+            continue
+        contents.append(
+            types.Content(
+                role=_gemini_role(str(turn.get("role", "user"))),
+                parts=[types.Part.from_text(text=text)],
+            )
+        )
+    contents.append(
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=f"Answer in {lang_name}. {message}")],
+        )
+    )
+    return contents
+
+
+def _infer_action(reply: str) -> SaathiAction:
+    lower = reply.lower()
+    if any(kw in lower for kw in ("emergency", "hospital", "112", "immediately", "तातडीने", "अस्पताल")):
+        return "urgent_care"
+    if any(kw in lower for kw in ("doctor", "डॉक्टर", "physician", "consult")):
+        return "see_doctor"
+    return "none"
+
+
 async def chat(
     patient_id: str,
     message: str,
@@ -112,27 +210,36 @@ async def chat(
     current_truth: CurrentTruthDTO,
     lang: str,
 ) -> SaathiResponse:
+    from app.services.lang_detect import resolve_reply_lang
+
+    reply_lang = resolve_reply_lang(message, lang, history)
     msg_lower = message.lower()
 
-    # Red-flag check — no model call needed.
     if any(kw in msg_lower for kw in _RED_FLAG_KEYWORDS):
         return SaathiResponse(
-            reply=_EMERGENCY_REPLY.get(lang, _EMERGENCY_REPLY["en"]),
+            reply=append_disclaimer(_EMERGENCY_REPLY.get(reply_lang, _EMERGENCY_REPLY["en"]), reply_lang),
             action="urgent_care",
             safe=True,
         )
 
+    if _is_identity_question(message):
+        return SaathiResponse(
+            reply=_IDENTITY_REPLY.get(reply_lang, _IDENTITY_REPLY["en"]),
+            action="none",
+            safe=True,
+        )
+
     context = _format_context(current_truth)
+    if context == "(no health data on file)":
+        return SaathiResponse(
+            reply=_EMPTY_DATA_REPLY.get(reply_lang, _EMPTY_DATA_REPLY["en"]),
+            action="none",
+            safe=True,
+        )
+
     lang_names = {"mr": "Marathi", "hi": "Hindi", "en": "English"}
-    lang_name = lang_names.get(lang, "Marathi")
-
+    lang_name = lang_names.get(reply_lang, "Marathi")
     system_prompt = f"{_HARD_BOUNDARIES}\n\nPatient data:\n{context}"
-
-    contents = []
-    for turn in history[-6:]:  # keep last 6 turns to stay within token budget
-        role = turn.get("role", "user")
-        contents.append({"role": role, "parts": [{"text": turn.get("content", "")}]})
-    contents.append({"role": "user", "parts": [{"text": f"Answer in {lang_name}. {message}"}]})
 
     try:
         from google import genai
@@ -141,34 +248,33 @@ async def chat(
         from app.config import settings
         from app.services.gemini_client import generate_content_with_fallback
 
+        if not settings.GOOGLE_API_KEY:
+            raise RuntimeError("GOOGLE_API_KEY not set")
+
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+        contents = _build_gemini_contents(history, message, lang_name)
         response, _ = await generate_content_with_fallback(
             client,
-            contents={"system_instruction": system_prompt, "contents": contents},
+            contents=contents,
             config=types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_level="none"),
+                system_instruction=system_prompt,
+                thinking_config=types.ThinkingConfig(thinking_level="low"),
                 max_output_tokens=300,
             ),
         )
         reply = _strip_banned((response.text or "").strip())
+        if not reply:
+            raise RuntimeError("empty Gemini response")
     except Exception as exc:  # noqa: BLE001
         logger.warning("saathi gemini failed: %s", exc)
-        fallbacks = {
-            "mr": "माफ करा, सध्या उत्तर देता येत नाही. डॉक्टरांशी बोला.",
-            "hi": "माफ़ करें, अभी उत्तर नहीं दे सकते। डॉक्टर से बात करें।",
-            "en": "Sorry, I can't answer right now. Please speak with your doctor.",
-        }
-        reply = fallbacks.get(lang, fallbacks["en"])
-
-    # Determine action hint from reply keywords.
-    action: SaathiAction = "none"
-    if any(kw in reply.lower() for kw in ("emergency", "hospital", "112", "immediately", "तातडीने", "अस्पताल")):
-        action = "urgent_care"
-    elif any(kw in reply.lower() for kw in ("doctor", "डॉक्टर", "physician", "consult")):
-        action = "see_doctor"
+        return SaathiResponse(
+            reply=_GEMINI_ERROR_REPLY.get(reply_lang, _GEMINI_ERROR_REPLY["en"]),
+            action="none",
+            safe=True,
+        )
 
     return SaathiResponse(
-        reply=append_disclaimer(reply, lang),
-        action=action,
+        reply=append_disclaimer(reply, reply_lang),
+        action=_infer_action(reply),
         safe=True,
     )

@@ -99,10 +99,24 @@ async def test_patient_books_and_provider_completes_lifecycle(
     assert accepted["provider_name"] == "Dr. Test"
     assert accepted["provider_specialty"] == "cardiology"
 
+    # idempotent accept (stale UI / double-click)
+    r = await client.patch(f"/api/v1/appointments/{appt_id}", json={"action": "accept"}, headers=prov)
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "accepted"
+
     # complete (provider)
     r = await client.patch(f"/api/v1/appointments/{appt_id}", json={"action": "complete"}, headers=prov)
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "completed"
+
+    # idempotent complete
+    r = await client.patch(f"/api/v1/appointments/{appt_id}", json={"action": "complete"}, headers=prov)
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "completed"
+
+    # cancel on completed is rejected (UI should not offer this)
+    r = await client.patch(f"/api/v1/appointments/{appt_id}", json={"action": "cancel"}, headers=prov)
+    assert r.status_code == 400, r.text
 
 
 async def test_accept_sets_consult_room_and_creates_reminder(
@@ -375,4 +389,51 @@ async def test_reschedule_releases_and_rebooks_slot(client, session_factory, aut
         ).scalar_one()
         assert old.status == "open"
         assert new.status == "booked"
+
+
+async def test_appointment_dto_includes_patient_display_name(
+    client, session_factory, auth_enabled
+):
+    await _seed_patient(session_factory, patient_id="pat_name", supabase_user_id="u_pat_name")
+    async with session_factory() as db:
+        row = (await db.execute(select(Patient).where(Patient.id == "pat_name"))).scalar_one()
+        row.display_name = "Maruti Kulkarni"
+        await db.commit()
+
+    pat = _bearer(_token("u_pat_name", "patient"))
+    r = await client.post(
+        "/api/v1/appointments",
+        json={"patient_id": "pat_name", "specialty": "dermatology"},
+        headers=pat,
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["patient_display_name"] == "Maruti Kulkarni"
+
+    r = await client.get("/api/v1/appointments", headers=pat)
+    assert r.json()[0]["patient_display_name"] == "Maruti Kulkarni"
+
+
+async def test_dashboard_pending_includes_specialty_queue(
+    client, session_factory, auth_enabled
+):
+    await _seed_patient(session_factory, patient_id="pat_dash", supabase_user_id="u_pat_dash")
+    prv_id = await _seed_provider(session_factory, supabase_user_id="u_prov_dash", specialty="dermatology")
+
+    async with session_factory() as db:
+        row = (await db.execute(select(Provider).where(Provider.id == prv_id))).scalar_one()
+        row.verification_status = "approved"
+        await db.commit()
+
+    pat = _bearer(_token("u_pat_dash", "patient"))
+    prov = _bearer(_token("u_prov_dash", "provider"))
+
+    await client.post(
+        "/api/v1/appointments",
+        json={"patient_id": "pat_dash", "specialty": "dermatology"},
+        headers=pat,
+    )
+
+    r = await client.get("/api/v1/providers/me/dashboard", headers=prov)
+    assert r.status_code == 200, r.text
+    assert r.json()["pending_requests"] == 1
 

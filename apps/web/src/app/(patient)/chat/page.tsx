@@ -5,6 +5,7 @@ import { Send } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { SaathiAvatar, type SaathiState } from "@/components/characters/saathi-avatar";
 import { getMemory, saathiChat } from "@/lib/api";
+import { useLocale } from "@/lib/hooks/use-locale";
 import { usePatient } from "@/lib/hooks/use-patient";
 import {
   clearSaathiUnread,
@@ -40,12 +41,12 @@ function warmGreeting(name: string, lang: "mr" | "hi" | "en"): string {
 
 export default function ChatPage() {
   const { patient, ready } = usePatient();
+  const { locale: lang } = useLocale();
   const [messages, setMessages] = useState<SaathiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [memory, setMemory] = useState<CurrentTruth | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const lang = (patient?.langPref ?? "mr") as "mr" | "en" | "hi";
   const usesDevanagari = lang === "mr" || lang === "hi";
 
   // Load any proactive history (e.g. a new-medicine message) and clear the unread flag.
@@ -74,7 +75,7 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      const history = next.slice(-12).map((m) => ({ role: m.role, content: m.content }));
+      const history = messages.slice(-11).map((m) => ({ role: m.role, content: m.content }));
       const res = await saathiChat(patient.id, text, history, lang);
       const assistantMsg: SaathiMessage = {
         role: "assistant",
@@ -104,10 +105,14 @@ export default function ChatPage() {
   const chips = groundingChips(memory, lang);
   const headerState: SaathiState = loading ? "thinking" : "idle";
 
+  if (!ready) {
+    return <div className="px-5 py-10 text-center text-sm text-text-faint">Loading…</div>;
+  }
+
   return (
-    <div className="flex h-screen flex-col bg-surface" lang={lang}>
+    <div className="flex min-h-0 flex-1 flex-col bg-surface" lang={lang}>
       {/* Header — Saathi's home */}
-      <div className="border-b border-saathi-border bg-saathi-bg px-5 pb-3 pt-5">
+      <div className="shrink-0 border-b border-saathi-border bg-saathi-bg px-4 pb-2.5 pt-4">
         <div className="flex items-center gap-3">
           <SaathiAvatar state={headerState} size={44} label={null} />
           <div>
@@ -140,7 +145,7 @@ export default function ChatPage() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-3 py-3">
         {messages.length === 0 && (
           <ChatBubble role="assistant" content={warmGreeting(patient?.displayName?.split(" ")[0] ?? "", lang)} />
         )}
@@ -155,10 +160,10 @@ export default function ChatPage() {
         ))}
         {loading && (
           <div className="flex items-start gap-2">
-            <div className="w-8 shrink-0 pt-1">
-              <SaathiAvatar state="thinking" size={32} label={null} />
+            <div className="w-7 shrink-0 pt-0.5">
+              <SaathiAvatar state="thinking" size={28} label={null} />
             </div>
-            <div className="rounded-2xl rounded-tl-sm border border-saathi-border bg-saathi-bg px-4 py-3">
+            <div className="rounded-2xl rounded-tl-sm border border-saathi-border bg-saathi-bg px-3.5 py-2.5">
               <span className="flex gap-1">
                 <span className="h-2 w-2 animate-saathi-dot rounded-full bg-saathi" style={{ animationDelay: "0ms" }} />
                 <span className="h-2 w-2 animate-saathi-dot rounded-full bg-saathi" style={{ animationDelay: "180ms" }} />
@@ -170,12 +175,12 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-border bg-surface-raised px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+80px)]">
+      {/* Input — sits above bottom nav */}
+      <div className="shrink-0 border-t border-border bg-surface-raised px-3 py-2.5 pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
         <div className="flex items-end gap-2">
           <textarea
             className={cn(
-              "flex-1 resize-none rounded-[14px] border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-saathi",
+              "max-h-28 min-h-[44px] flex-1 resize-none rounded-[14px] border border-border bg-surface px-3.5 py-2.5 text-sm outline-none focus:border-saathi",
               usesDevanagari && "font-devanagari",
             )}
             rows={1}

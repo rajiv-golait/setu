@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { PrimaryButton, SecondaryButton, SectionHeader } from "@/components/ui/buttons";
 import { BriefExportActions } from "@/components/brief/export-actions";
+import { ShareBriefCard } from "@/components/brief/share-brief-card";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { PRIORITY_DISCLAIMER } from "@/lib/constants";
 import type { DoctorBrief } from "@/lib/types";
@@ -340,11 +341,22 @@ export function BriefView({
 
       {showActions && (
         <>
+          <div className="mb-6">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-primary-light">
+              Share with your doctor
+            </p>
+            <ShareBriefCard
+              patientId={brief.patient_id}
+              patientName={patientName}
+              compact
+            />
+          </div>
+
           <BriefExportActions patientId={brief.patient_id} briefId={brief.brief_id} />
           <Link href="/share" className="mt-5 block">
             <PrimaryButton>
               <Share2 className="h-[19px] w-[19px]" aria-hidden />
-              Share with doctor
+              Full share screen
             </PrimaryButton>
           </Link>
           <Link href="/referral" className="mt-2.5 block">

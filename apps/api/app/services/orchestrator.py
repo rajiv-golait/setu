@@ -76,6 +76,13 @@ async def run_pipeline(
     Telegram chat once the brief is generated.
     """
     state = await jobs_store.load(job_id) or jobs_store.new_job_state(job_id, document_id, patient_id)
+    if state.status == "completed":
+        logger.info("job %s already completed — skipping duplicate run", job_id)
+        return
+    if state.status == "running":
+        logger.warning("job %s already running — skipping duplicate run", job_id)
+        return
+
     state.started_at = datetime.now(timezone.utc)
     await jobs_store.save(state)
 
@@ -194,11 +201,20 @@ async def _run_pipeline_inner(
                 snapshot = build_snapshot(
                     share_id="shr_pending", token="pending",
                     created_at=datetime.now(timezone.utc), expires_at=None,
-                    patient_ref=_patient_ref(patient_id), brief=brief, current_truth=truth,
+                    patient_ref=_patient_ref(patient), brief=brief, current_truth=truth,
                 )
                 row = await persistence.create_share(
                     db, patient_id, snapshot.model_dump(mode="json"), expires_in=None
                 )
+                # Backfill real ids into the stored snapshot so the QR/brief link resolves.
+                # Full dict reassignment (not in-place mutation) ensures SQLAlchemy tracks the change.
+                row.snapshot_json = {
+                    **row.snapshot_json,
+                    "share_id": row.id,
+                    "token": row.token,
+                    "created_at": row.created_at.isoformat(),
+                    "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+                }
                 await db.commit()
                 brief_token = row.token
                 state.result["share_token"] = row.token

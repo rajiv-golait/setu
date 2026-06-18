@@ -157,7 +157,13 @@ export default function VitalsPage() {
             <div className="flex justify-between">
               <span className="font-semibold capitalize">{r.vital_type.replace("_", " ")}</span>
               <span className="text-text-muted">
-                {new Date(r.measured_at).toLocaleDateString("en-IN")}
+                {new Date(r.measured_at).toLocaleString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             </div>
             <p className="mt-1">{formatVitalValue(r)}</p>

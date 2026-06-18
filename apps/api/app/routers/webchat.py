@@ -3,7 +3,7 @@ Mounted under /api/v1.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,8 +14,7 @@ from app.db.session import get_db
 from app.errors import not_found
 from app.ids import new_id
 from app.schemas.jobs import JobStatusDTO
-from app.services import ingestion
-from app.services.orchestrator import run_pipeline
+from app.services.document_upload import upload_document_for_patient
 
 router = APIRouter(prefix="/webchat", tags=["webchat"])
 
@@ -24,7 +23,6 @@ _SUMMARY_WORDS = {"summary", "सारांश"}
 
 @router.post("/message")
 async def webchat_message(
-    background: BackgroundTasks,
     file: UploadFile | None = File(default=None),
     text: str | None = Form(default=None),
     patient_id: str | None = Form(default=None),
@@ -32,17 +30,14 @@ async def webchat_message(
 ) -> dict:
     if file is not None:
         pid = patient_id or await _ensure_anon_patient(db)
-        # DPDP gateway: consent must be on record before processing.
-        await ingestion.require_consent(db, pid)
-        storage_path, mime, doc_type, original_hash, enc_key = await ingestion.store_upload(file)
-        doc = await ingestion.create_document(db, pid, storage_path, mime, doc_type, original_hash, enc_key)
+        result = await upload_document_for_patient(db, pid, file, None)
         await db.commit()
-
-        job_id = new_id("job")
-        state = jobs_store.new_job_state(job_id, doc.id, pid)
-        await jobs_store.save(state)
-        background.add_task(run_pipeline, job_id, doc.id, pid, None)
-        return {"job_id": job_id, "status": "processing", "message": "वाचत आहे..."}
+        return {
+            "job_id": result.job_id,
+            "status": "processing",
+            "message": "वाचत आहे...",
+            "duplicate": result.duplicate,
+        }
 
     if (text or "").strip().lower() in _SUMMARY_WORDS:
         token = await _brief_token(db, patient_id)

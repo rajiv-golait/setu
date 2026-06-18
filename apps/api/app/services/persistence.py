@@ -146,6 +146,28 @@ async def get_share(db: AsyncSession, token: str) -> ShareRow | None:
     ).scalar_one_or_none()
 
 
+async def latest_share(db: AsyncSession, patient_id: str) -> ShareRow | None:
+    """Most recent non-expired share for a patient, if any."""
+    now = datetime.now(timezone.utc)
+    rows = (
+        await db.execute(
+            select(ShareRow)
+            .where(ShareRow.patient_id == patient_id)
+            .order_by(ShareRow.created_at.desc())
+            .limit(10)
+        )
+    ).scalars().all()
+    for row in rows:
+        if row.expires_at is None:
+            return row
+        expires = row.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires >= now:
+            return row
+    return None
+
+
 async def replace_reminders(
     db: AsyncSession, patient_id: str, items: list[dict]
 ) -> None:
@@ -158,7 +180,12 @@ async def replace_reminders(
 
     from app.db.models import Reminder as ReminderRow
 
-    await db.execute(delete(ReminderRow).where(ReminderRow.patient_id == patient_id))
+    await db.execute(
+        delete(ReminderRow).where(
+            ReminderRow.patient_id == patient_id,
+            ReminderRow.reminder_type.in_(("medication", "lab_test_due", "refill_due")),
+        )
+    )
     for item in items:
         schedule = {
             k: v
@@ -205,6 +232,19 @@ async def has_consent(db: AsyncSession, patient_id: str, purpose: str) -> bool:
         )
     ).scalar_one_or_none()
     return row is not None
+
+
+async def get_latest_consent(
+    db: AsyncSession, patient_id: str, purpose: str
+) -> ConsentRow | None:
+    return (
+        await db.execute(
+            select(ConsentRow)
+            .where(ConsentRow.patient_id == patient_id, ConsentRow.purpose == purpose)
+            .order_by(ConsentRow.granted_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
 
 
 async def revoke_consent(db: AsyncSession, patient_id: str, purpose: str) -> bool:

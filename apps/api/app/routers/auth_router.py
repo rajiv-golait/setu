@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.db.models import HealthWorker, Patient, Provider
 from app.db.session import get_db
 from app.deps import get_auth_user_id, get_user_role
@@ -58,3 +59,30 @@ async def auth_me(
         patient_id=patient_id,
         health_worker_id=worker_id,
     )
+
+
+@router.post("/dev/ensure-admin")
+async def ensure_dev_admin() -> dict:
+    """Create or reset the dev admin account (local only). No auth required."""
+    if settings.PRODUCTION:
+        raise AppError(UNAUTHORIZED, "Not available in production", retryable=False)
+    if not settings.SUPABASE_SERVICE_ROLE_KEY:
+        return {
+            "ok": False,
+            "message": (
+                "SUPABASE_SERVICE_ROLE_KEY not set in apps/api/.env. "
+                "Add it from Supabase → Project Settings → API → service_role (secret), "
+                "restart the API, then sign in again."
+            ),
+        }
+    from app.services import supabase_admin
+
+    user_id = await supabase_admin.ensure_email_admin(
+        settings.DEV_ADMIN_EMAIL,
+        settings.DEV_ADMIN_PASSWORD,
+    )
+    return {
+        "ok": True,
+        "email": settings.DEV_ADMIN_EMAIL,
+        "user_id": user_id,
+    }

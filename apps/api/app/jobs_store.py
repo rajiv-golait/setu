@@ -26,6 +26,10 @@ def _key(job_id: str) -> str:
     return f"job:{job_id}"
 
 
+def _doc_job_key(document_id: str) -> str:
+    return f"doc:job:{document_id}"
+
+
 def new_job_state(job_id: str, document_id: str, patient_id: str | None = None) -> JobStatusDTO:
     return JobStatusDTO(
         job_id=job_id,
@@ -51,6 +55,14 @@ async def load(job_id: str) -> JobStatusDTO | None:
     if raw is None:
         return None
     return JobStatusDTO.model_validate(json.loads(raw))
+
+
+async def save_document_job(document_id: str, job_id: str) -> None:
+    await _redis().set(_doc_job_key(document_id), job_id, ex=_TTL)
+
+
+async def load_document_job(document_id: str) -> str | None:
+    return await _redis().get(_doc_job_key(document_id))
 
 
 # --- Explanation cache (keyed by document_id) ----------------------------- #

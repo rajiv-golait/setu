@@ -191,11 +191,9 @@ async def _handle_media(chat_id: str, message: dict) -> None:
     state = jobs_store.new_job_state(job_id, doc_id, patient_id)
     await jobs_store.save(state)
 
-    # Run the pipeline; it sends the explanation + brief link to this chat.
-    # Imported here to avoid a circular import (orchestrator imports telegram).
-    from app.services.orchestrator import run_pipeline
+    from app.services.job_queue import schedule_pipeline
 
-    await run_pipeline(job_id, doc_id, patient_id, reply_chat_id=chat_id)
+    await schedule_pipeline(job_id, doc_id, patient_id, reply_chat_id=chat_id)
 
 
 def _extract_file(message: dict) -> tuple[str | None, str]:

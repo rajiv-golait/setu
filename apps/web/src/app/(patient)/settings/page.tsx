@@ -9,6 +9,7 @@ import { clearLocalConsent } from "@/lib/consent";
 import { ErrorPanel } from "@/components/ui/state-panel";
 import {
   isSubscribed,
+  pushFailureMessage,
   pushSupported,
   subscribeToReminders,
   unsubscribeFromReminders,
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushAvailable, setPushAvailable] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!patient?.id) return;
@@ -49,13 +51,20 @@ export default function SettingsPage() {
 
   const toggleReminders = async () => {
     setPushBusy(true);
+    setPushError(null);
     try {
       if (pushOn) {
         await unsubscribeFromReminders();
+        await updateNotificationPreference("push", false).catch(() => undefined);
         setPushOn(false);
       } else {
-        const ok = await subscribeToReminders();
-        setPushOn(ok);
+        const result = await subscribeToReminders();
+        if (result.ok) {
+          await updateNotificationPreference("push", true).catch(() => undefined);
+          setPushOn(true);
+        } else {
+          setPushError(pushFailureMessage(result));
+        }
       }
     } finally {
       setPushBusy(false);
@@ -104,7 +113,7 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-setu-fade px-5 pb-24 pt-5">
-      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
+      <Link href="/profile" className="mb-4 inline-flex items-center gap-1 text-sm font-semibold text-primary">
         <ChevronLeft className="h-4 w-4" aria-hidden />
         Back
       </Link>
@@ -154,6 +163,11 @@ export default function SettingsPage() {
               />
             </button>
           </div>
+          {pushError && (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {pushError}
+            </p>
+          )}
         </section>
       )}
 

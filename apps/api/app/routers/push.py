@@ -27,7 +27,10 @@ class UnsubscribeRequest(BaseModel):
 @router.get("/vapid-key")
 async def get_vapid_key() -> dict:
     if not settings.VAPID_PUBLIC_KEY:
-        raise HTTPException(status_code=503, detail="Push not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Push not configured — set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY",
+        )
     return {"public_key": settings.VAPID_PUBLIC_KEY}
 
 

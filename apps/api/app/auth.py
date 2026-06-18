@@ -87,7 +87,13 @@ def _role_from_claims(claims: dict) -> str:
     and the JWT both expose app_metadata, so this works for either path."""
     app_metadata = claims.get("app_metadata") or {}
     role = app_metadata.get("role")
-    return str(role) if role else "patient"
+    if role:
+        return str(role)
+    if not settings.PRODUCTION and settings.DEV_ADMIN_EMAIL:
+        email = str(claims.get("email") or "").strip().lower()
+        if email and email == settings.DEV_ADMIN_EMAIL.strip().lower():
+            return "admin"
+    return "patient"
 
 
 async def verify_supabase_role(token: str) -> str:

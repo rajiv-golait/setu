@@ -80,6 +80,40 @@ async def test_consent_then_upload_succeeds(client, session_factory):
     assert r.json()["status"] == "queued"
 
 
+async def test_consent_status_reflects_grant(client, session_factory):
+    pid = await _make_patient(session_factory, "pat_cs")
+
+    r = await client.get(f"/api/v1/consent/status?patient_id={pid}")
+    assert r.status_code == 200, r.text
+    assert r.json()["granted"] is False
+
+    await client.post(
+        "/api/v1/consent",
+        json={"patient_id": pid, "purpose": "document_processing", "lang": "mr", "channel": "web"},
+    )
+
+    r = await client.get(f"/api/v1/consent/status?patient_id={pid}")
+    assert r.status_code == 200, r.text
+    assert r.json()["granted"] is True
+
+
+async def test_grant_consent_is_idempotent(client, session_factory):
+    pid = await _make_patient(session_factory, "pat_idem")
+    payload = {"patient_id": pid, "purpose": "document_processing", "lang": "mr", "channel": "web"}
+
+    r1 = await client.post("/api/v1/consent", json=payload)
+    r2 = await client.post("/api/v1/consent", json=payload)
+    assert r1.status_code == 201, r1.text
+    assert r2.status_code == 201, r2.text
+    assert r1.json()["consent_id"] == r2.json()["consent_id"]
+
+    async with session_factory() as db:
+        from sqlalchemy import select
+
+        rows = (await db.execute(select(Consent).where(Consent.patient_id == pid))).scalars().all()
+        assert len(rows) == 1
+
+
 async def test_withdraw_consent_blocks_upload(client, session_factory, auth_enabled):
     sub = "u_withdraw"
     pid = await _make_patient(session_factory, "pat_wd", sub=sub)

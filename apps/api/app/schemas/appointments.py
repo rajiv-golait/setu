@@ -103,3 +103,5 @@ class AppointmentDTO(BaseModel):
     # inline their derived/joined fields.
     provider_name: str | None = None
     provider_specialty: str | None = None
+    patient_display_name: str | None = None
+    chief_concern: str | None = None

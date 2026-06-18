@@ -7,8 +7,17 @@ needs_review rather than fabricating a value.
 """
 from __future__ import annotations
 
+import logging
+
 from app.config import settings
 from app.schemas.claims import REQUIRED_FIELDS, Claim, ClaimsJSON
+
+logger = logging.getLogger("setu.validation")
+
+# Only these types produce memory-meaningful entries (reducer STATE_LIKE + TIME_SERIES).
+# Everything else — procedure, advice, and any extraction artifact — is hard-rejected
+# before persist_claims() so junk never lands in the claims log.
+KNOWN_MEDICAL_TYPES = frozenset({"medication", "diagnosis", "allergy", "lab_result", "vital"})
 
 # Plausibility ranges per lab test (normalized_key -> (min, max, unit hint)).
 # Generous bounds — the goal is to catch garbage (OCR slips), not to second-guess clinicians.
@@ -30,6 +39,7 @@ _VALID_DIAGNOSIS_STATUS = {"active", "resolved", "suspected"}
 class ValidationResult:
     def __init__(self) -> None:
         self.claims: list[Claim] = []
+        self.rejected: list[dict] = []   # hard-rejected (unknown type) — never persisted
         self.issues: list[dict] = []
 
     def add_issue(self, claim_id: str, code: str, message: str) -> None:
@@ -90,10 +100,22 @@ def validate_claim(claim: Claim, threshold: float) -> tuple[Claim, list[dict]]:
 
 
 def validate_claims(claims_json: ClaimsJSON, threshold: float | None = None) -> ValidationResult:
-    """Validate every claim in a Claims JSON payload."""
+    """Validate every claim in a Claims JSON payload.
+
+    Claims whose type is not in KNOWN_MEDICAL_TYPES are hard-rejected here —
+    they are recorded in result.rejected and never added to result.claims, so
+    persist_claims() will never write them to the DB.
+    """
     threshold = settings.CONFIDENCE_THRESHOLD if threshold is None else threshold
     result = ValidationResult()
     for claim in claims_json.claims:
+        if claim.type not in KNOWN_MEDICAL_TYPES:
+            logger.debug(
+                "claim %s rejected: type %r is not a known medical type",
+                claim.claim_id, claim.type,
+            )
+            result.rejected.append({"claim_id": claim.claim_id, "type": claim.type, "code": "UNKNOWN_TYPE"})
+            continue
         validated, issues = validate_claim(claim, threshold)
         result.claims.append(validated)
         result.issues.extend(issues)

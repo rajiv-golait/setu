@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Patient
 from app.db.session import get_db
-from app.deps import get_auth_user_id, get_user_role, require_patient_access
+from app.deps import get_auth_user_id, get_user_role, require_patient_or_provider_access
 from app.errors import NOT_FOUND, AppError
 from app.schemas.brief import DoctorBriefDTO
 from app.schemas.exports import EsanjeewaniExportDTO, FhirExportDTO
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/patients", tags=["brief"])
 @router.get("/{patient_id}/brief", response_model=DoctorBriefDTO)
 async def get_brief(
     request: Request,
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
     auth_user_id: str | None = Depends(get_auth_user_id),
     role: str = Depends(get_user_role),
@@ -49,7 +49,7 @@ async def get_brief(
 
 @router.post("/{patient_id}/brief", response_model=DoctorBriefDTO, status_code=201)
 async def regenerate_brief(
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
 ) -> DoctorBriefDTO:
     truth = await recompute_current_truth(db, patient.id)
@@ -74,7 +74,7 @@ async def _load_brief_for_patient(
 
 @router.get("/{patient_id}/brief/fhir", response_model=FhirExportDTO)
 async def get_brief_fhir(
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
 ) -> FhirExportDTO:
     brief, label = await _load_brief_for_patient(db, patient)
@@ -85,7 +85,7 @@ async def get_brief_fhir(
 
 @router.get("/{patient_id}/brief/exports/esanjeewani", response_model=EsanjeewaniExportDTO)
 async def get_brief_esanjeewani(
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
 ) -> EsanjeewaniExportDTO:
     brief, label = await _load_brief_for_patient(db, patient)
@@ -95,7 +95,7 @@ async def get_brief_esanjeewani(
 
 @router.get("/{patient_id}/brief/fhir/download")
 async def download_brief_fhir(
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
     brief, label = await _load_brief_for_patient(db, patient)
@@ -111,7 +111,7 @@ async def download_brief_fhir(
 
 @router.get("/{patient_id}/brief/exports/esanjeewani/download")
 async def download_brief_esanjeewani(
-    patient: Patient = Depends(require_patient_access),
+    patient: Patient = Depends(require_patient_or_provider_access),
     db: AsyncSession = Depends(get_db),
 ) -> PlainTextResponse:
     brief, label = await _load_brief_for_patient(db, patient)

@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import jobs_store
 from app.db.models import HealthWorker, Patient, PatientLink
 from app.db.session import get_db
 from app.deps import require_health_worker, require_worker_patient_link
@@ -17,10 +16,10 @@ from app.schemas.common import PatientDTO
 from app.schemas.consent import consent_text
 from app.schemas.health_worker import AssignedPatientDTO, ProxyPatientCreate, WorkerDTO
 from app.schemas.share import ShareDTO
-from app.services import ingestion, persistence
+from app.services import persistence
 from app.services.audit import log_access
+from app.services.document_upload import upload_document_for_patient
 from app.services.memory.persistence import load_current_truth
-from app.services.orchestrator import run_pipeline
 from app.services.sharing import build_snapshot, make_qr_svg, share_url
 
 router = APIRouter(prefix="/workers", tags=["health-workers"])
@@ -138,7 +137,6 @@ async def list_assigned_patients(
 @router.post("/patients/{patient_id}/documents", status_code=202)
 async def proxy_upload(
     patient_id: str,
-    background: BackgroundTasks,
     request: Request,
     file: UploadFile = File(...),
     doc_type: str | None = Form(default=None),
@@ -146,13 +144,9 @@ async def proxy_upload(
     worker: HealthWorker = Depends(require_health_worker),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    await ingestion.require_consent(db, patient.id)
-
-    storage_path, mime, guessed_type, original_hash, enc_key = await ingestion.store_upload(file)
-    resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else guessed_type
-    doc = await ingestion.create_document(
-        db, patient.id, storage_path, mime, resolved_type, original_hash, enc_key
-    )
+    mime = file.content_type or "application/octet-stream"
+    resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else None
+    result = await upload_document_for_patient(db, patient.id, file, resolved_type)
     await log_access(
         db,
         actor_id=worker.id,
@@ -163,13 +157,12 @@ async def proxy_upload(
         request=request,
     )
     await db.commit()
-
-    job_id = new_id("job")
-    state = jobs_store.new_job_state(job_id, doc.id, patient.id)
-    await jobs_store.save(state)
-    background.add_task(run_pipeline, job_id, doc.id, patient.id)
-
-    return {"document_id": doc.id, "job_id": job_id, "status": "queued"}
+    return {
+        "document_id": result.document_id,
+        "job_id": result.job_id,
+        "status": result.status,
+        "duplicate": result.duplicate,
+    }
 
 
 @router.post("/patients/{patient_id}/share", response_model=ShareDTO, status_code=201)

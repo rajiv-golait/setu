@@ -1,7 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PREFIXES = ["/login", "/doctor/login", "/doctor/pending", "/onboarding", "/brief/", "/share/"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/doctor/login",
+  "/admin/login",
+  "/doctor/pending",
+  "/onboarding",
+  "/brief/",
+  "/share/",
+];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
@@ -13,9 +21,14 @@ function isDoctorAppPath(pathname: string): boolean {
 
 type UserRole = "patient" | "provider" | "health_worker" | "admin";
 
-function roleFromMeta(meta: Record<string, unknown> | undefined): UserRole {
+function roleFromMeta(
+  meta: Record<string, unknown> | undefined,
+  email?: string | null,
+): UserRole {
   const r = meta?.role;
   if (r === "provider" || r === "health_worker" || r === "admin") return r;
+  const devAdmin = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL?.trim().toLowerCase();
+  if (devAdmin && email?.trim().toLowerCase() === devAdmin) return "admin";
   return "patient";
 }
 
@@ -68,14 +81,21 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = isDoctorAppPath(pathname) ? "/doctor/login" : "/login";
+    if (pathname.startsWith("/admin")) {
+      loginUrl.pathname = "/admin/login";
+    } else {
+      loginUrl.pathname = isDoctorAppPath(pathname) ? "/doctor/login" : "/login";
+    }
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = roleFromMeta(user.app_metadata as Record<string, unknown> | undefined);
+  const role = roleFromMeta(
+    user.app_metadata as Record<string, unknown> | undefined,
+    user.email,
+  );
 
-  if (pathname === "/login" || pathname === "/doctor/login") {
+  if (pathname === "/login" || pathname === "/doctor/login" || pathname === "/admin/login") {
     const dest = request.nextUrl.clone();
     dest.pathname = homeForRole(role);
     return NextResponse.redirect(dest);

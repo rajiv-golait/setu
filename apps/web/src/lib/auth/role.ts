@@ -1,10 +1,17 @@
 /** Supabase app_metadata.role values used across the app. */
 export type UserRole = "patient" | "provider" | "health_worker" | "admin";
 
-export function roleFromMetadata(meta: Record<string, unknown> | undefined): UserRole {
+export function roleFromMetadata(
+  meta: Record<string, unknown> | undefined,
+  email?: string | null,
+): UserRole {
   const role = meta?.role;
   if (role === "provider" || role === "health_worker" || role === "admin") {
     return role;
+  }
+  const devAdmin = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL?.trim().toLowerCase();
+  if (devAdmin && email?.trim().toLowerCase() === devAdmin) {
+    return "admin";
   }
   return "patient";
 }

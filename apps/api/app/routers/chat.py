@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.deps import get_db, require_patient_access
-from app.errors import not_found
+from app.schemas.memory import CurrentTruthDTO
 from app.services.memory.persistence import load_current_truth
 from app.services.saathi import SaathiResponse, chat
 
@@ -19,6 +19,12 @@ class ChatRequest(BaseModel):
     lang: str = "mr"
 
 
+def _empty_truth(patient_id: str) -> CurrentTruthDTO:
+    from datetime import datetime, timezone
+
+    return CurrentTruthDTO(patient_id=patient_id, entries=[], generated_at=datetime.now(timezone.utc))
+
+
 @router.post("", response_model=SaathiResponse)
 async def saathi_chat(
     patient_id: str,
@@ -28,7 +34,7 @@ async def saathi_chat(
 ) -> SaathiResponse:
     current_truth = await load_current_truth(db, patient_id)
     if current_truth is None:
-        raise not_found("CurrentTruth", patient_id)
+        current_truth = _empty_truth(patient_id)
     return await chat(
         patient_id=patient_id,
         message=body.message,

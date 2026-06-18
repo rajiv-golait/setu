@@ -51,9 +51,8 @@ class Settings(BaseSettings):
     SHARE_BASE_URL: str = "http://localhost:3000/share"
 
     # --- AI providers ---
-    # Live path defaults to cloud (Gemini); the routing chain falls back to mock
-    # on any failure, so a missing key / API hiccup degrades gracefully. DEMO_MODE
-    # is the separate, zero-dependency safety path (untouched by this default).
+    # Real extraction or honest failure — no mock fallback in any deployment.
+    # Set EXTRACTION_PROVIDER=mock or REASONING_PROVIDER=mock explicitly for local dev.
     EXTRACTION_PROVIDER: str = "cloud"  # mock|qwen|cloud
     QWEN_ENDPOINT: str = "http://models:8001/v1"
     REASONING_PROVIDER: str = "cloud"  # mock|medgemma|gemini|cloud
@@ -77,11 +76,9 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str = ""
     SUPABASE_ENABLED: bool = False
 
-    # --- Demo ---
-    DEMO_MODE: bool = False
-    SEED_PATIENT_ID: str = "pat_demo"
-    # When true, fall back to seeded mock claims if cloud extraction fails (demo safety net).
-    EXTRACTION_MOCK_ON_CLOUD_FAILURE: bool = False
+    # --- Dev admin portal (local testing only; disabled when PRODUCTION=true) ---
+    DEV_ADMIN_EMAIL: str = "itsmerajiv021@gmail.com"
+    DEV_ADMIN_PASSWORD: str = "setu-admin-dev"
 
     # --- Production gate ---
     PRODUCTION: bool = False
@@ -108,6 +105,8 @@ class Settings(BaseSettings):
 
     # --- Pipeline ---
     PIPELINE_TIMEOUT_SECONDS: int = 90
+    PIPELINE_WORKER_CONCURRENCY: int = 2
+    MAX_BATCH_UPLOAD_FILES: int = 20
 
     # --- Web Push (VAPID) ---
     VAPID_PRIVATE_KEY: str = ""

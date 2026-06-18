@@ -64,9 +64,15 @@ async def generate_content_with_fallback(
                     quota_hit = True
                     logger.warning("gemini %s quota exhausted: %s", model, e)
                     break
-                if is_transient_gemini_error(e) and attempt < len(_RETRY_BACKOFF_SECONDS) - 1:
-                    logger.warning("gemini %s transient error (attempt %d): %s", model, attempt + 1, e)
-                    continue
+                if is_transient_gemini_error(e):
+                    if attempt == 0:
+                        logger.warning(
+                            "gemini %s transient error (attempt 1): %s", model, e
+                        )
+                        await asyncio.sleep(0.5)
+                        continue
+                    logger.warning("gemini %s still unavailable, trying next model", model)
+                    break
                 logger.warning("gemini %s failed: %s", model, e)
                 break
 
@@ -100,7 +106,7 @@ async def validate_model_chain() -> None:
                 model=model,
                 contents="hi",
                 config=types.GenerateContentConfig(
-                    thinking_config=types.ThinkingConfig(thinking_level="none"),
+                    thinking_config=types.ThinkingConfig(thinking_level="low"),
                     max_output_tokens=1,
                 ),
             )

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DoctorShell } from "@/components/layout/role-shells";
 import { listEncountersForPatient, listProviderPatients } from "@/lib/api";
 import type { Encounter } from "@/lib/types";
 
@@ -39,7 +38,7 @@ export default function DoctorConsultationsPage() {
   }, []);
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Consultation history</h1>
       {loading ? (
         <p className="mt-4 text-sm text-text-faint">Loading…</p>
@@ -62,6 +61,6 @@ export default function DoctorConsultationsPage() {
           ))}
         </ul>
       )}
-    </DoctorShell>
+    </>
   );
 }

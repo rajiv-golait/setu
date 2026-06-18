@@ -1,4 +1,16 @@
-import { getVapidKey, subscribeToPush, unsubscribeFromPush } from "@/lib/api";
+import { ApiError, getVapidKey, subscribeToPush, unsubscribeFromPush } from "@/lib/api";
+
+export type PushFailureReason =
+  | "unsupported"
+  | "denied"
+  | "no_vapid"
+  | "no_sw"
+  | "auth"
+  | "server";
+
+export type PushSubscribeResult =
+  | { ok: true }
+  | { ok: false; reason: PushFailureReason; message: string };
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -18,11 +30,34 @@ export function pushSupported(): boolean {
   );
 }
 
+export function pushFailureMessage(result: Extract<PushSubscribeResult, { ok: false }>): string {
+  return result.message;
+}
+
+async function ensurePushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    let reg = await navigator.serviceWorker.getRegistration("/");
+    if (!reg) {
+      reg = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
+    }
+    const ready = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 12_000)),
+    ]);
+    if (!ready) return null;
+    return reg;
+  } catch {
+    return null;
+  }
+}
+
 /** Is there already an active push subscription in this browser? */
 export async function isSubscribed(): Promise<boolean> {
   if (!pushSupported()) return false;
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await ensurePushServiceWorker();
+    if (!reg) return false;
     return (await reg.pushManager.getSubscription()) !== null;
   } catch {
     return false;
@@ -31,45 +66,92 @@ export async function isSubscribed(): Promise<boolean> {
 
 /**
  * Requests permission, creates a push subscription, and registers it with the
- * backend (authenticated). Returns true only if fully subscribed.
- * Call this AFTER the user has accepted the in-app pre-prompt.
+ * backend (authenticated). Returns structured success/failure.
  */
-export async function subscribeToReminders(): Promise<boolean> {
-  if (!pushSupported()) return false;
+export async function subscribeToReminders(): Promise<PushSubscribeResult> {
+  if (!pushSupported()) {
+    return {
+      ok: false,
+      reason: "unsupported",
+      message: "This browser does not support medicine reminders.",
+    };
+  }
 
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") return false;
+  if (permission !== "granted") {
+    return {
+      ok: false,
+      reason: "denied",
+      message: "Notification permission was blocked. Allow notifications in browser settings and try again.",
+    };
+  }
 
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await ensurePushServiceWorker();
+  if (!reg) {
+    return {
+      ok: false,
+      reason: "no_sw",
+      message: "Could not start the app helper for reminders. Refresh the page and try again.",
+    };
+  }
 
   let publicKey: string;
   try {
     const { public_key } = await getVapidKey();
-    if (!public_key) return false;
+    if (!public_key) {
+      return {
+        ok: false,
+        reason: "no_vapid",
+        message: "Reminders are not configured on the server yet. Ask your admin to set VAPID keys.",
+      };
+    }
     publicKey = public_key;
-  } catch {
-    return false; // push not configured on the server
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 503) {
+      return {
+        ok: false,
+        reason: "no_vapid",
+        message:
+          "Reminders are not configured on the server yet. Run: cd apps/api && python scripts/generate_vapid.py",
+      };
+    }
+    return {
+      ok: false,
+      reason: "server",
+      message: e instanceof Error ? e.message : "Could not reach the server.",
+    };
   }
 
-  let subscription = await reg.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-    });
-  }
-
-  const json = subscription.toJSON();
-  const keys = json.keys ?? {};
   try {
+    let subscription = await reg.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+      });
+    }
+
+    const json = subscription.toJSON();
+    const keys = json.keys ?? {};
     await subscribeToPush({
       endpoint: subscription.endpoint,
       p256dh: keys.p256dh ?? "",
       auth: keys.auth ?? "",
     });
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) {
+      return {
+        ok: false,
+        reason: "auth",
+        message: "Please sign in again, then turn reminders on.",
+      };
+    }
+    return {
+      ok: false,
+      reason: "server",
+      message: e instanceof Error ? e.message : "Could not save your reminder subscription.",
+    };
   }
 }
 
@@ -77,7 +159,8 @@ export async function subscribeToReminders(): Promise<boolean> {
 export async function unsubscribeFromReminders(): Promise<boolean> {
   if (!pushSupported()) return false;
   try {
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await ensurePushServiceWorker();
+    if (!reg) return false;
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return true;
     await unsubscribeFromPush(sub.endpoint).catch(() => undefined);

@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { CancelDialog } from "@/components/appointments/cancel-dialog";
 import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
-import { getAppointment, patchAppointment } from "@/lib/api";
+import { getAppointment, doctorAppointmentAction } from "@/lib/api";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
@@ -17,6 +17,7 @@ export default function PatientAppointmentDetailPage() {
   const [appt, setAppt] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = () => {
     getAppointment(id)
@@ -31,8 +32,15 @@ export default function PatientAppointmentDetailPage() {
 
   const act = async (action: string, opts?: { reason?: string }) => {
     if (!appt) return;
-    const updated = await patchAppointment(appt.id, action, opts);
-    setAppt(updated);
+    setActionError(null);
+    try {
+      const updated = await doctorAppointmentAction(appt.id, action, opts);
+      setAppt(updated);
+      refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not update appointment");
+      refresh();
+    }
   };
 
   if (loading) return <p className="p-8 text-center text-sm text-text-faint">Loading…</p>;
@@ -52,6 +60,7 @@ export default function PatientAppointmentDetailPage() {
 
       <h1 className="text-xl font-semibold">{appt.specialty}</h1>
       <p className="mt-1 capitalize text-sm text-text-muted">Status: {appt.status}</p>
+      {actionError && <p className="mt-2 text-sm text-danger">{actionError}</p>}
 
       {appt.status === "completed" && (
         <Link
@@ -88,7 +97,11 @@ export default function PatientAppointmentDetailPage() {
               onDone={refresh}
             />
           )}
-          <CancelDialog onConfirm={(reason) => act("cancel", { reason })} />
+          <CancelDialog
+            key={appt.status}
+            disabled={!canModify}
+            onConfirm={(reason) => act("cancel", { reason })}
+          />
         </>
       )}
     </div>

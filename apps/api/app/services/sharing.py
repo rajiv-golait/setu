@@ -17,7 +17,8 @@ from app.schemas.share import ShareSnapshotDTO
 
 
 def share_url(token: str) -> str:
-    return f"{settings.SHARE_BASE_URL.rstrip('/')}/{token}"
+    """Public doctor-facing brief URL (encoded in QR codes)."""
+    return f"{settings.BRIEF_BASE_URL.rstrip('/')}/brief/{token}"
 
 
 def make_qr_svg(data: str, scale: int = 6) -> str:

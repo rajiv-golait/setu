@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
 import { roleFromMetadata, type UserRole } from "@/lib/auth/role";
-import { getAuthMe } from "@/lib/api";
+import { getAuthMe, getProviderDashboard } from "@/lib/api";
 import { NotificationBell } from "@/components/ui/notification-bell";
 export function useUserRole(): { role: UserRole; loading: boolean } {
   const [role, setRole] = useState<UserRole>("patient");
@@ -23,7 +23,12 @@ export function useUserRole(): { role: UserRole; loading: boolean } {
       return;
     }
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setRole(roleFromMetadata(user?.app_metadata as Record<string, unknown> | undefined));
+      setRole(
+        roleFromMetadata(
+          user?.app_metadata as Record<string, unknown> | undefined,
+          user?.email,
+        ),
+      );
       setLoading(false);
     });
   }, []);
@@ -35,6 +40,8 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { role, loading } = useUserRole();
+  const [pendingCount, setPendingCount] = useState(0);
+
   useEffect(() => {
     if (!SUPABASE_ENABLED || loading || role !== "provider") return;
     getAuthMe()
@@ -49,7 +56,16 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => undefined);
+    getProviderDashboard()
+      .then((d) => setPendingCount(d.pending_requests))
+      .catch(() => setPendingCount(0));
   }, [loading, role, pathname, router]);
+
+  const signOut = async () => {
+    const supabase = createClient();
+    if (supabase) await supabase.auth.signOut();
+    router.replace("/doctor/login");
+  };
 
   if (loading) {
     return <div className="p-8 text-center text-sm text-text-faint">Loading…</div>;
@@ -68,7 +84,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
 
   const tabs = [
     { href: "/doctor", label: "Dashboard" },
-    { href: "/doctor/appointments", label: "Appointments" },
+    { href: "/doctor/appointments", label: "Appointments", badge: pendingCount },
     { href: "/doctor/patients", label: "Patients" },
     { href: "/doctor/consultations", label: "Consultations" },
     { href: "/doctor/calendar", label: "Calendar" },
@@ -76,7 +92,7 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="mx-auto min-h-screen max-w-4xl bg-surface">
+    <div className="mx-auto min-h-screen max-w-5xl bg-surface">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-raised px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -85,20 +101,34 @@ export function DoctorShell({ children }: { children: React.ReactNode }) {
             </span>
             <span className="font-semibold text-[#3D4A42]">Setu · Doctor</span>
           </div>
-          <NotificationBell />
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="text-sm font-semibold text-text-muted hover:text-primary"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
         <nav className="mt-3 flex gap-4 overflow-x-auto">
-          {tabs.map(({ href, label }) => (
+          {tabs.map(({ href, label, badge }) => (
             <Link
               key={href}
               href={href}
-              className={`whitespace-nowrap pb-1 text-sm font-semibold ${
+              className={`relative whitespace-nowrap pb-1 text-sm font-semibold ${
                 pathname === href || (href !== "/doctor" && pathname.startsWith(href))
                   ? "border-b-2 border-primary text-primary"
                   : "text-text-muted"
               }`}
             >
               {label}
+              {badge != null && badge > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold text-white">
+                  {badge > 9 ? "9+" : badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
@@ -168,12 +198,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="mx-auto max-w-lg p-8 text-center">
         <p className="text-text-muted">Admin access required.</p>
+        <Link href="/admin/login" className="mt-4 inline-block text-sm font-semibold text-primary">
+          Admin sign in
+        </Link>
       </div>
     );
   }
 
   const tabs = [
     { href: "/admin", label: "Overview" },
+    { href: "/admin/users", label: "Users" },
     { href: "/admin/doctors", label: "Doctors" },
     { href: "/admin/appointments", label: "Appointments" },
     { href: "/admin/patients", label: "Patients" },

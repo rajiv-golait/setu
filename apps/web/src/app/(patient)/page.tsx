@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Camera, Check, Lock, Sparkles, Sun, Sunrise, Sunset, X } from "lucide-react";
@@ -11,10 +11,12 @@ import { ConnectionBadge } from "@/components/ui/connection-badge";
 import { SetuAvatar } from "@/components/characters/setu-avatar";
 import { LabSparkline } from "@/components/ui/sparkline";
 import { ReminderOptIn } from "@/components/reminders/reminder-opt-in";
-import { hasLocalConsent } from "@/lib/consent";
-import { getReminders, getVitalsSummary, listVitals } from "@/lib/api";
+import { hasLocalConsent, markLocalConsent } from "@/lib/consent";
+import { getConsentStatus, getReminders, getVitalsSummary, listVitals } from "@/lib/api";
 import { useLiveMemory } from "@/lib/hooks/use-live-memory";
 import { isTakenToday, markTakenToday } from "@/lib/med-acks";
+import { computeDriftNudge } from "@/lib/drift";
+import { pushSaathiMessage } from "@/lib/saathi-history";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type {
   CurrentTruthEntry,
@@ -72,15 +74,36 @@ export default function TodayPage() {
   const router = useRouter();
   const { patient, ready, ensurePatient } = usePatient();
   const [consentOk, setConsentOk] = useState(false);
+  const [consentReady, setConsentReady] = useState(false);
   const [reminders, setReminders] = useState<ReminderSchedule | null>(null);
   const [vitalsSummary, setVitalsSummary] = useState<VitalsSummary | null>(null);
   const [vitals, setVitals] = useState<VitalReading[]>([]);
   const [acks, setAcks] = useState(0); // bump to re-render after marking taken
+  const [driftDismissed, setDriftDismissed] = useState(false);
+  const driftPushedRef = useRef(false);
 
   const { truth, newMed, dismissNewMed } = useLiveMemory(consentOk && patient?.id ? patient.id : null);
 
   useEffect(() => {
-    if (patient?.id && hasLocalConsent(patient.id)) setConsentOk(true);
+    if (!patient?.id) {
+      setConsentReady(true);
+      return;
+    }
+    if (hasLocalConsent(patient.id)) {
+      setConsentOk(true);
+      setConsentReady(true);
+      return;
+    }
+    setConsentReady(false);
+    getConsentStatus(patient.id)
+      .then((status) => {
+        if (status.granted) {
+          markLocalConsent(patient.id);
+          setConsentOk(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setConsentReady(true));
   }, [patient?.id]);
 
   useEffect(() => {
@@ -125,7 +148,21 @@ export default function TodayPage() {
         ? { type: "blood_pressure" as VitalType, label: "Blood pressure", points: bp, summary: vitalsSummary?.latest.blood_pressure }
         : null;
 
-  if (!ready) {
+  // Drift nudge — pure read of already-fetched data, no new fetch.
+  const driftNudge = useMemo(
+    () => computeDriftNudge(truth, vitalsSummary),
+    [truth, vitalsSummary],
+  );
+
+  // Push to Saathi once when a non-stable nudge first appears.
+  useEffect(() => {
+    if (driftNudge && !driftPushedRef.current) {
+      driftPushedRef.current = true;
+      pushSaathiMessage({ role: "assistant", content: driftNudge.saathiHint, action: "monitor" });
+    }
+  }, [driftNudge]);
+
+  if (!ready || (patient?.id && !consentReady)) {
     return <div className="px-5 py-10 text-center text-sm text-text-faint">Loading…</div>;
   }
 
@@ -248,6 +285,25 @@ export default function TodayPage() {
       </Section>
 
       {/* Medicine-reminder opt-in (friendly pre-prompt) */}
+      {/* Drift nudge — calm amber, non-diagnostic, dismissible */}
+      {driftNudge && !driftDismissed && (
+        <div className="mt-6 flex items-start gap-3 rounded-card border border-amber-200 bg-amber-50 p-4">
+          <span className="mt-0.5 text-base" aria-hidden>📊</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">{driftNudge.label}</p>
+            <p className="mt-0.5 text-sm text-amber-800">{driftNudge.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDriftDismissed(true)}
+            aria-label="Dismiss"
+            className="text-amber-400 hover:text-amber-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       <div className="mt-6">
         <ReminderOptIn />
       </div>
@@ -257,8 +313,8 @@ export default function TodayPage() {
           <Lock className="mt-0.5 h-[15px] w-[15px] shrink-0 text-primary-light" strokeWidth={1.8} />
           <span>Your records stay private. They&apos;re shared only when you choose to.</span>
         </div>
-        <Link href="/settings" className="text-[13px] font-semibold text-primary">
-          Privacy &amp; my data
+        <Link href="/profile" className="text-[13px] font-semibold text-primary">
+          Profile &amp; privacy
         </Link>
       </div>
     </div>

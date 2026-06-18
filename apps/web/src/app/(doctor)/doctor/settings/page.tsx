@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DoctorShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { getProviderMe, updateProviderMe, uploadProviderCredential } from "@/lib/api";
 import type { ProviderRecord } from "@/lib/types";
@@ -56,7 +55,7 @@ export default function DoctorSettingsPage() {
   };
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Profile</h1>
       {provider?.verification_status && provider.verification_status !== "approved" && (
         <p className="mt-2 rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
@@ -126,6 +125,6 @@ export default function DoctorSettingsPage() {
           {credMsg && <p className="mt-2 text-sm text-text-muted">{credMsg}</p>}
         </div>
       </div>
-    </DoctorShell>
+    </>
   );
 }

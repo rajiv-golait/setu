@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { DoctorShell } from "@/components/layout/role-shells";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { getProviderAvailability, setProviderAvailability } from "@/lib/api";
 
@@ -31,7 +30,7 @@ export default function DoctorCalendarPage() {
   };
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Availability</h1>
       <p className="mt-1 text-sm text-text-muted">Patients book from generated slots.</p>
       <div className="mt-6 space-y-4">
@@ -83,6 +82,6 @@ export default function DoctorCalendarPage() {
       <Link href="/doctor" className="mt-6 inline-block text-sm font-semibold text-primary">
         Back to dashboard
       </Link>
-    </DoctorShell>
+    </>
   );
 }

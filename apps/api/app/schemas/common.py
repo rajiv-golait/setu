@@ -33,6 +33,12 @@ class DocumentUploadResponse(BaseModel):
     document_id: str
     job_id: str
     status: str
+    duplicate: bool = False
+
+
+class BatchUploadResponse(BaseModel):
+    batch_id: str
+    items: list[DocumentUploadResponse]
 
 
 class DocumentDTO(BaseModel):

@@ -21,7 +21,6 @@ from app.schemas.memory import CurrentTruthDTO, CurrentTruthEntry
 from app.services.gemini_client import generate_content_with_fallback
 from app.services.gemini_models import GEMINI_DEFAULT_MODEL
 from app.services.reasoning.base import ReasonerProvider
-from app.services.safety import append_disclaimer
 
 logger = logging.getLogger("setu.gemini")
 
@@ -122,8 +121,8 @@ Patient data:
             logger.warning("gemini explanation failed (%s)", exc)
             raise
 
-        # Disclaimer always appended by code — deterministic, never duplicated.
-        return append_disclaimer(explanation, lang)
+        # Disclaimer is appended by explanation.py — do NOT call append_disclaimer here.
+        return explanation
 
     async def generate_brief(self, current_truth: CurrentTruthDTO) -> dict:
         truth_summary = _format_truth_for_prompt(current_truth)

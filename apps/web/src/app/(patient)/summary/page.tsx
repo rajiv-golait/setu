@@ -165,14 +165,24 @@ function SummaryContent() {
 
       {/* Secondary action — available once summary or fallback is showing */}
       {(summary || fallbackText) && (
-        <Link href="/brief">
-          <button
-            type="button"
-            className="mt-6 w-full rounded-card border border-border bg-surface-raised py-3.5 text-sm font-semibold text-text-muted shadow-card"
-          >
-            View doctor brief →
-          </button>
-        </Link>
+        <div className="mt-6 space-y-2">
+          <Link href="/brief">
+            <button
+              type="button"
+              className="w-full rounded-card border border-border bg-surface-raised py-3.5 text-sm font-semibold text-text-muted shadow-card"
+            >
+              View doctor brief →
+            </button>
+          </Link>
+          <Link href="/share">
+            <button
+              type="button"
+              className="w-full rounded-card border border-primary/30 bg-[#EEF4F0] py-3.5 text-sm font-semibold text-primary shadow-card"
+            >
+              Share QR &amp; link with doctor →
+            </button>
+          </Link>
+        </div>
       )}
     </div>
   );

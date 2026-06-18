@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { DoctorShell } from "@/components/layout/role-shells";
 import { PrimaryButton, SecondaryButton } from "@/components/ui/buttons";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { ConsultSidebar } from "@/components/doctor/consult-sidebar";
@@ -61,7 +60,7 @@ export default function DoctorConsultationPage() {
   };
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Consultation</h1>
       {status && <p className="mt-1 text-sm capitalize text-text-muted">Status: {status}</p>}
       <div className="mt-4 grid gap-6 lg:grid-cols-2">
@@ -104,6 +103,6 @@ export default function DoctorConsultationPage() {
       <Link href="/doctor" className="mt-6 inline-block text-sm font-semibold text-primary">
         Back to dashboard
       </Link>
-    </DoctorShell>
+    </>
   );
 }

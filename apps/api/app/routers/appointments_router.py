@@ -129,7 +129,26 @@ async def list_appointments(
     rows = await svc.list_for_role(
         db, role=role, actor_id=actor_id, provider=provider, status=status
     )
-    return [await _dto(db, a) for a in rows]
+    joined = await svc.enrich_dtos(db, rows)
+    return [
+        AppointmentDTO(
+            id=a.id,
+            patient_id=a.patient_id,
+            provider_id=a.provider_id,
+            specialty=a.specialty,
+            status=a.status,
+            scheduled_for=a.scheduled_for,
+            consult_room=a.consult_room,
+            referral_id=a.referral_id,
+            triage_id=a.triage_id,
+            notes=a.notes,
+            requested_at=a.requested_at,
+            created_at=a.created_at,
+            updated_at=a.updated_at,
+            **extra,
+        )
+        for a, extra in zip(rows, joined, strict=True)
+    ]
 
 
 @router.get("/appointments/{appointment_id}", response_model=AppointmentDTO)
@@ -219,7 +238,21 @@ async def appointment_patient_context(
     role: str = Depends(get_user_role),
     auth_user_id: str | None = Depends(get_auth_user_id),
 ) -> dict:
-    """Provider-only: load CurrentTruth + latest brief for the appointment's patient."""
+    """Provider-only: CurrentTruth + latest brief + longitudinal history.
+
+    History fields (all derived from existing data, no new tables):
+    - past_briefs: last 3 briefs ordered by generated_at desc (one_line + generated_at)
+    - med_history: per medication normalized_key, ordered list of observed claims
+      (date + dose + frequency) — shows when the med was added or changed
+    - lab_trends: per lab normalized_key, the history series already embedded in
+      current_truth.value.history (reused, not recomputed)
+    - vital_trends: per vital_type, up to 10 recent scalar readings from the Vital table
+    """
+    from sqlalchemy import asc
+
+    from app.db.models import Brief as BriefRow
+    from app.db.models import Claim as ClaimRow
+    from app.db.models import Vital as VitalRow
     from app.services import persistence
     from app.services.memory.persistence import load_current_truth
 
@@ -230,13 +263,83 @@ async def appointment_patient_context(
     provider = await get_or_create_provider(db, auth_user_id)
     await svc.assert_can_view(db, appt, role=role, actor_id=provider.id, provider=provider)
 
-    current_truth = await load_current_truth(db, appt.patient_id)
-    brief = await persistence.latest_brief(db, appt.patient_id)
+    patient_id = appt.patient_id
+    current_truth = await load_current_truth(db, patient_id)
+    brief = await persistence.latest_brief(db, patient_id)
+
+    # --- past_briefs: last 3, summary fields only ---
+    brief_rows = (
+        await db.execute(
+            select(BriefRow)
+            .where(BriefRow.patient_id == patient_id)
+            .order_by(BriefRow.generated_at.desc())
+            .limit(3)
+        )
+    ).scalars().all()
+    past_briefs = [
+        {
+            "brief_id": r.id,
+            "generated_at": r.generated_at.isoformat(),
+            "one_line": (r.brief_json or {}).get("one_line", ""),
+            "chief_concern": (r.brief_json or {}).get("chief_concern", ""),
+        }
+        for r in brief_rows
+    ]
+
+    # --- med_history: medication claims ordered by observed_at asc ---
+    med_claims = (
+        await db.execute(
+            select(ClaimRow)
+            .where(ClaimRow.patient_id == patient_id, ClaimRow.claim_type == "medication")
+            .order_by(asc(ClaimRow.observed_at))
+        )
+    ).scalars().all()
+    med_history: dict[str, list[dict]] = {}
+    for c in med_claims:
+        key = c.normalized_key or (c.fields or {}).get("name", "unknown")
+        med_history.setdefault(key, []).append({
+            "date": c.observed_at.isoformat() if c.observed_at else None,
+            "dose": (c.fields or {}).get("dose"),
+            "dose_unit": (c.fields or {}).get("dose_unit"),
+            "frequency": (c.fields or {}).get("frequency"),
+            "confidence": float(c.confidence),
+        })
+
+    # --- lab_trends: reuse history already stored inside current_truth entries ---
+    lab_trends: dict[str, list[dict]] = {}
+    for entry in (current_truth.entries if current_truth else []):
+        if entry.entry_type == "lab_result":
+            history = (entry.value or {}).get("history")
+            if history:
+                lab_trends[entry.normalized_key] = history
+
+    # --- vital_trends: up to 10 most recent readings per type from Vital table ---
+    vital_rows = (
+        await db.execute(
+            select(VitalRow)
+            .where(VitalRow.patient_id == patient_id)
+            .order_by(VitalRow.measured_at.asc())
+        )
+    ).scalars().all()
+    vital_trends: dict[str, list[dict]] = {}
+    for v in vital_rows:
+        vt = v.vital_type
+        vital_trends.setdefault(vt, [])
+        if len(vital_trends[vt]) < 10:
+            vital_trends[vt].append({
+                "measured_at": v.measured_at.isoformat(),
+                "value": v.value,
+                "flag": v.flag,
+            })
 
     return {
-        "patient_id": appt.patient_id,
+        "patient_id": patient_id,
         "brief": brief.model_dump() if brief else None,
         "current_truth": current_truth.model_dump() if current_truth else None,
+        "past_briefs": past_briefs,
+        "med_history": med_history,
+        "lab_trends": lab_trends,
+        "vital_trends": vital_trends,
     }
 
 

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Video } from "lucide-react";
 import type { Appointment } from "@/lib/types";
 import { SecondaryButton } from "@/components/ui/buttons";
+import { formatWhen, patientLabel } from "@/lib/doctor-utils";
 import { cn } from "@/lib/cn";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -19,29 +21,40 @@ export function AppointmentCard({
   appt,
   onAction,
   showPatient = false,
+  doctorView = false,
 }: {
   appt: Appointment;
   onAction?: (action: string) => void;
   showPatient?: boolean;
+  doctorView?: boolean;
 }) {
-  const when = appt.scheduled_for
-    ? new Date(appt.scheduled_for).toLocaleString("en-IN", {
-        day: "numeric",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "Time not set";
+  const router = useRouter();
+  const when = formatWhen(appt.scheduled_for ?? appt.requested_at);
+  const detailHref = doctorView
+    ? `/doctor/appointments/${appt.id}`
+    : `/appointments/${appt.id}`;
+
+  const title = showPatient ? patientLabel(appt) : appt.specialty;
+  const subtitle = showPatient ? appt.specialty : null;
 
   return (
-    <div className="rounded-card border border-border bg-surface-raised p-4 shadow-card">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(detailHref)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") router.push(detailHref);
+      }}
+      className="block cursor-pointer rounded-card border border-border bg-surface-raised p-4 shadow-card transition hover:border-primary/30"
+    >
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="font-semibold">{appt.specialty}</p>
-          {showPatient && (
-            <p className="text-xs text-text-muted">Patient {appt.patient_id.slice(0, 12)}…</p>
+        <div className="min-w-0">
+          <p className="font-semibold">{title}</p>
+          {subtitle && <p className="text-sm text-text-muted">{subtitle}</p>}
+          {showPatient && appt.chief_concern && (
+            <p className="mt-1 line-clamp-2 text-xs text-text-muted">{appt.chief_concern}</p>
           )}
-          {appt.provider_name && (
+          {appt.provider_name && !showPatient && (
             <p className="text-sm text-text-muted">
               {appt.provider_name}
               {appt.provider_specialty ? ` · ${appt.provider_specialty}` : ""}
@@ -61,19 +74,19 @@ export function AppointmentCard({
 
       {appt.consult_room && (appt.status === "accepted" || appt.status === "confirmed") && (
         <Link
-          href={
-            showPatient
-              ? `/doctor/appointments/${appt.id}`
-              : `/appointments/${appt.id}`
-          }
+          href={detailHref}
           className="mt-3 flex items-center gap-2 text-sm font-semibold text-primary"
+          onClick={(e) => e.stopPropagation()}
         >
           <Video className="h-4 w-4" /> Join consultation
         </Link>
       )}
 
       {onAction && appt.status === "requested" && (
-        <div className="mt-3 flex gap-2">
+        <div
+          className="mt-3 flex gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <SecondaryButton className="flex-1" onClick={() => onAction("accept")}>
             Accept
           </SecondaryButton>

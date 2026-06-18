@@ -1,22 +1,21 @@
-"""Document upload + retrieval. Upload starts the pipeline via BackgroundTasks."""
+"""Document upload + retrieval. Upload enqueues pipeline work for the background worker."""
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import jobs_store
+from app.config import settings
 from app.db.models import Document, Extraction, Patient
 from app.db.session import get_db
 from app.deps import _check_patient_access, get_auth_user_id, get_user_role, require_patient_access
-from app.errors import not_found
+from app.errors import VALIDATION_ERROR, AppError, not_found
 from app.ids import new_id
 from app.schemas.claims import ClaimsJSON
-from app.schemas.common import DocumentDTO, DocumentListItem, DocumentUploadResponse
-from app.services import ingestion, retention
+from app.schemas.common import BatchUploadResponse, DocumentDTO, DocumentListItem, DocumentUploadResponse
+from app.services import retention
 from app.services.audit_phi import audit_phi_read
-from app.services.job_queue import enqueue_pipeline
-from app.services.orchestrator import run_pipeline
+from app.services.document_upload import upload_document_for_patient
 
 router = APIRouter(tags=["documents"])
 
@@ -41,7 +40,6 @@ def _normalize_doc_type(raw: str | None, mime: str) -> str:
 
 @router.post("/documents", response_model=DocumentUploadResponse, status_code=202)
 async def upload_document(
-    background: BackgroundTasks,
     file: UploadFile = File(...),
     patient_id: str = Form(...),
     doc_type: str | None = Form(default=None),
@@ -49,23 +47,39 @@ async def upload_document(
     auth_user_id: str | None = Depends(get_auth_user_id),
 ) -> DocumentUploadResponse:
     await _check_patient_access(patient_id, db, auth_user_id)
-    await ingestion.require_consent(db, patient_id)
-
-    storage_path, mime, guessed_type, original_hash, enc_key = await ingestion.store_upload(file)
-    resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else guessed_type
-    doc = await ingestion.create_document(
-        db, patient_id, storage_path, mime, resolved_type, original_hash, enc_key
-    )
+    mime = file.content_type or "application/octet-stream"
+    resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else None
+    result = await upload_document_for_patient(db, patient_id, file, resolved_type)
     await db.commit()
+    return result
 
-    job_id = new_id("job")
-    state = jobs_store.new_job_state(job_id, doc.id, patient_id)
-    await jobs_store.save(state)
 
-    await enqueue_pipeline(job_id, doc.id, patient_id)
-    background.add_task(run_pipeline, job_id, doc.id, patient_id)
+@router.post("/documents/batch", response_model=BatchUploadResponse, status_code=202)
+async def upload_documents_batch(
+    files: list[UploadFile] = File(...),
+    patient_id: str = Form(...),
+    doc_type: str | None = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> BatchUploadResponse:
+    await _check_patient_access(patient_id, db, auth_user_id)
+    if not files:
+        raise AppError(VALIDATION_ERROR, "At least one file is required", retryable=False)
+    if len(files) > settings.MAX_BATCH_UPLOAD_FILES:
+        raise AppError(
+            VALIDATION_ERROR,
+            f"Maximum {settings.MAX_BATCH_UPLOAD_FILES} files per batch",
+            retryable=False,
+        )
 
-    return DocumentUploadResponse(document_id=doc.id, job_id=job_id, status="queued")
+    batch_id = new_id("batch")
+    items: list[DocumentUploadResponse] = []
+    for upload in files:
+        mime = upload.content_type or "application/octet-stream"
+        resolved_type = _normalize_doc_type(doc_type, mime) if doc_type else None
+        items.append(await upload_document_for_patient(db, patient_id, upload, resolved_type))
+    await db.commit()
+    return BatchUploadResponse(batch_id=batch_id, items=items)
 
 
 @router.get("/patients/{patient_id}/documents", response_model=list[DocumentListItem])

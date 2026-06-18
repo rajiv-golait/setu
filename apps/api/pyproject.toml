@@ -17,6 +17,7 @@ dependencies = [
     "segno>=1.6",
     "google-genai>=2.0.0",
     "PyJWT>=2.8",
+    "pywebpush>=2.0",
 ]
 
 [project.optional-dependencies]

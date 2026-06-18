@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { BellRing, Check } from "lucide-react";
 import { SaathiAvatar } from "@/components/characters/saathi-avatar";
-import { isSubscribed, pushSupported, subscribeToReminders } from "@/lib/push";
+import { updateNotificationPreference } from "@/lib/api";
+import {
+  isSubscribed,
+  pushFailureMessage,
+  pushSupported,
+  subscribeToReminders,
+} from "@/lib/push";
 
 const DISMISS_KEY = "setu_reminder_optin_dismissed";
 
@@ -14,6 +20,7 @@ const DISMISS_KEY = "setu_reminder_optin_dismissed";
  */
 export function ReminderOptIn() {
   const [state, setState] = useState<"hidden" | "ask" | "working" | "on">("hidden");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pushSupported()) return;
@@ -53,14 +60,30 @@ export function ReminderOptIn() {
           <p className="mt-0.5 text-sm text-text-muted">
             I&apos;ll send a gentle nudge at the right time — only if you want.
           </p>
+          {error && (
+            <p className="mt-2 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
           <div className="mt-3 flex gap-2">
             <button
               type="button"
               disabled={state === "working"}
               onClick={async () => {
                 setState("working");
-                const ok = await subscribeToReminders();
-                setState(ok ? "on" : "ask");
+                setError(null);
+                const result = await subscribeToReminders();
+                if (result.ok) {
+                  try {
+                    await updateNotificationPreference("push", true);
+                  } catch {
+                    /* subscription saved; preference is best-effort */
+                  }
+                  setState("on");
+                  return;
+                }
+                setError(pushFailureMessage(result));
+                setState("ask");
               }}
               className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[13px] bg-saathi px-4 text-sm font-semibold text-white disabled:opacity-50"
             >

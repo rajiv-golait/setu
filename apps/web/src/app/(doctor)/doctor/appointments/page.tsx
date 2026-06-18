@@ -1,27 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { DoctorShell } from "@/components/layout/role-shells";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AppointmentCard } from "@/components/appointments/appointment-card";
-import { listAppointments, patchAppointment } from "@/lib/api";
+import { RequestQueueCard } from "@/components/doctor/request-queue-card";
+import { isToday } from "@/lib/doctor-utils";
+import { listAppointments, doctorAppointmentAction } from "@/lib/api";
 import type { Appointment } from "@/lib/types";
 
-type Tab = "today" | "upcoming" | "completed";
+type Tab = "requests" | "today" | "upcoming" | "completed";
 
-function isToday(iso?: string | null): boolean {
-  if (!iso) return false;
-  const d = new Date(iso);
-  const now = new Date();
+export default function DoctorAppointmentsPage() {
   return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+    <Suspense fallback={<p className="text-sm text-text-muted">Loading appointments…</p>}>
+      <DoctorAppointmentsContent />
+    </Suspense>
   );
 }
 
-export default function DoctorAppointmentsPage() {
+function DoctorAppointmentsContent() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<Appointment[]>([]);
   const [tab, setTab] = useState<Tab>("today");
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = () => {
     listAppointments().then(setItems).catch(() => setItems([]));
@@ -29,17 +31,55 @@ export default function DoctorAppointmentsPage() {
 
   useEffect(() => {
     refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
-  const handleAction = async (id: string, action: string) => {
-    await patchAppointment(id, action);
-    refresh();
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t === "requests" || t === "today" || t === "upcoming" || t === "completed") {
+      setTab(t);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const hasRequests = items.some((a) => a.status === "requested");
+    if (hasRequests && !searchParams.get("tab")) {
+      setTab("requests");
+    }
+  }, [items, searchParams]);
+
+  const handleAction = async (id: string, action: string, reason?: string) => {
+    setBusyId(id);
+    setActionError(null);
+    try {
+      const updated = await doctorAppointmentAction(
+        id,
+        action,
+        reason ? { reason } : undefined,
+      );
+      setItems((prev) => prev.map((a) => (a.id === id ? updated : a)));
+      refresh();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Could not update appointment");
+      refresh();
+    } finally {
+      setBusyId(null);
+    }
   };
 
+  const requested = useMemo(() => items.filter((a) => a.status === "requested"), [items]);
+
   const filtered = useMemo(() => {
-    if (tab === "completed") {
-      return items.filter((a) => a.status === "completed");
-    }
+    if (tab === "requests") return requested;
+    if (tab === "completed") return items.filter((a) => a.status === "completed");
     if (tab === "today") {
       return items.filter(
         (a) =>
@@ -52,7 +92,7 @@ export default function DoctorAppointmentsPage() {
         !["completed", "cancelled", "declined"].includes(a.status) &&
         !isToday(a.scheduled_for ?? a.requested_at),
     );
-  }, [items, tab]);
+  }, [items, tab, requested]);
 
   const sorted = [...filtered].sort((a, b) => {
     if (a.status === "requested" && b.status !== "requested") return -1;
@@ -62,16 +102,17 @@ export default function DoctorAppointmentsPage() {
     );
   });
 
-  const tabs: { id: Tab; label: string }[] = [
+  const tabs: { id: Tab; label: string; count?: number }[] = [
+    { id: "requests", label: "Requests", count: requested.length },
     { id: "today", label: "Today" },
     { id: "upcoming", label: "Upcoming" },
     { id: "completed", label: "Completed" },
   ];
 
   return (
-    <DoctorShell>
+    <>
       <h1 className="text-xl font-semibold">Appointments</h1>
-      <div className="mt-4 flex gap-2">
+      <div className="mt-4 flex flex-wrap gap-2">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -82,18 +123,31 @@ export default function DoctorAppointmentsPage() {
             }`}
           >
             {t.label}
+            {t.count != null && t.count > 0 ? ` (${t.count})` : ""}
           </button>
         ))}
       </div>
+      {actionError && <p className="mt-4 text-sm text-danger">{actionError}</p>}
       <div className="mt-6 space-y-3">
         {sorted.length === 0 ? (
           <p className="text-sm text-text-muted">No appointments in this tab.</p>
+        ) : tab === "requests" ? (
+          sorted.map((a) => (
+            <RequestQueueCard
+              key={a.id}
+              appt={a}
+              busy={busyId === a.id}
+              onAccept={() => handleAction(a.id, "accept")}
+              onDecline={(reason) => handleAction(a.id, "decline", reason)}
+            />
+          ))
         ) : (
           sorted.map((a) => (
             <AppointmentCard
               key={a.id}
               appt={a}
               showPatient
+              doctorView
               onAction={
                 a.status === "requested"
                   ? (action) => handleAction(a.id, action)
@@ -103,6 +157,6 @@ export default function DoctorAppointmentsPage() {
           ))
         )}
       </div>
-    </DoctorShell>
+    </>
   );
 }

@@ -21,16 +21,38 @@ from app.db import models  # noqa: F401 — register tables
 from app.db.base import Base
 
 
-# --- Fake in-memory Redis for job state ----------------------------------- #
+# --- Fake in-memory Redis for job state + pipeline queue ------------------- #
 class FakeRedis:
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
+        self._lists: dict[str, list[str]] = {}
 
-    async def set(self, key, value, ex=None):  # noqa: ANN001
+    async def set(self, key, value, ex=None, nx=False):  # noqa: ANN001
+        if nx and key in self._store:
+            return None
         self._store[key] = value
+        return True
 
     async def get(self, key):  # noqa: ANN001
         return self._store.get(key)
+
+    async def delete(self, key):  # noqa: ANN001
+        self._store.pop(key, None)
+
+    async def rpush(self, key, value):  # noqa: ANN001
+        self._lists.setdefault(key, []).append(value)
+
+    async def lpop(self, key):  # noqa: ANN001
+        items = self._lists.get(key, [])
+        if not items:
+            return None
+        return items.pop(0)
+
+    async def blpop(self, key, timeout=0):  # noqa: ANN001
+        items = self._lists.get(key, [])
+        if items:
+            return key, items.pop(0)
+        return None
 
 
 @pytest.fixture(autouse=True)

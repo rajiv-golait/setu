@@ -23,7 +23,7 @@ import type {
   VitalsSummary,
 } from "./types";
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     message: string,
     public code?: string,
@@ -151,6 +151,14 @@ export async function grantConsent(body: {
   });
 }
 
+export async function getConsentStatus(
+  patientId: string,
+  purpose = "document_processing",
+): Promise<{ patient_id: string; purpose: string; granted: boolean }> {
+  const q = new URLSearchParams({ patient_id: patientId, purpose });
+  return request(`/consent/status?${q}`);
+}
+
 export async function listDocuments(patientId: string): Promise<DocumentListItem[]> {
   return request<DocumentListItem[]>(`/patients/${patientId}/documents`);
 }
@@ -165,6 +173,21 @@ export async function getMemory(patientId: string): Promise<CurrentTruth> {
 
 export async function getSummary(patientId: string, lang = "mr"): Promise<PatientSummary> {
   return request<PatientSummary>(`/patients/${patientId}/summary?lang=${lang}`);
+}
+
+export async function getLatestShare(patientId: string): Promise<ShareCreateResponse> {
+  return request<ShareCreateResponse>(`/patients/${patientId}/share`);
+}
+
+export async function ensurePatientShare(patientId: string): Promise<ShareCreateResponse> {
+  try {
+    return await getLatestShare(patientId);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) {
+      return createShare(patientId);
+    }
+    throw e;
+  }
 }
 
 export async function createShare(patientId: string): Promise<ShareCreateResponse> {
@@ -218,12 +241,33 @@ export async function uploadDocument(
   patientId: string,
   file: File,
   docType?: string,
-): Promise<{ document_id: string; job_id: string; status: string }> {
+): Promise<{ document_id: string; job_id: string; status: string; duplicate?: boolean }> {
   const form = new FormData();
   form.append("patient_id", patientId);
   form.append("file", file);
   if (docType) form.append("doc_type", docType);
   return request(`/documents`, { method: "POST", body: form });
+}
+
+export type BatchUploadItem = {
+  document_id: string;
+  job_id: string;
+  status: string;
+  duplicate?: boolean;
+};
+
+export async function uploadDocumentsBatch(
+  patientId: string,
+  files: File[],
+  docType?: string,
+): Promise<{ batch_id: string; items: BatchUploadItem[] }> {
+  const form = new FormData();
+  form.append("patient_id", patientId);
+  for (const file of files) {
+    form.append("files", file);
+  }
+  if (docType) form.append("doc_type", docType);
+  return request(`/documents/batch`, { method: "POST", body: form });
 }
 
 export async function createReferral(body: {
@@ -356,6 +400,30 @@ export async function patchAppointment(
   });
 }
 
+/** Accept/decline/complete/cancel with refresh-safe handling for stale UI state. */
+export async function doctorAppointmentAction(
+  appointmentId: string,
+  action: string,
+  opts?: { reason?: string; new_slot_id?: string },
+): Promise<Appointment> {
+  try {
+    return await patchAppointment(appointmentId, action, opts);
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e;
+    const msg = e.message;
+    const terminal =
+      (action === "accept" && msg.includes("status 'accepted'")) ||
+      (action === "complete" && msg.includes("status 'completed'")) ||
+      (action === "cancel" && msg.includes("status 'cancelled'")) ||
+      (action === "cancel" && msg.includes("status 'completed'")) ||
+      (action === "decline" && msg.includes("status 'declined'"));
+    if (terminal) {
+      return getAppointment(appointmentId);
+    }
+    throw e;
+  }
+}
+
 export interface VisitSummary {
   encounter_id: string;
   appointment_id: string | null;
@@ -373,6 +441,30 @@ export interface PatientContext {
   patient_id: string;
   brief: Record<string, unknown> | null;
   current_truth: CurrentTruth | null;
+  past_briefs: Array<{
+    brief_id: string;
+    generated_at: string;
+    one_line: string;
+    chief_concern: string;
+  }>;
+  med_history: Record<string, Array<{
+    date: string | null;
+    dose: string | null;
+    dose_unit: string | null;
+    frequency: string | null;
+    confidence: number;
+  }>>;
+  lab_trends: Record<string, Array<{
+    value: unknown;
+    unit: string | null;
+    date: string | null;
+    flag: string | null;
+  }>>;
+  vital_trends: Record<string, Array<{
+    measured_at: string;
+    value: Record<string, unknown>;
+    flag: string | null;
+  }>>;
 }
 
 export async function getAppointmentPatientContext(
@@ -507,6 +599,11 @@ export async function getAccessLog(patientId: string): Promise<AccessLogEntry[]>
 
 export async function getAuthMe(): Promise<import("./types").AuthMe> {
   return request("/auth/me");
+}
+
+/** Local dev: create dev admin via service role when configured. */
+export async function ensureDevAdmin(): Promise<{ ok: boolean; message?: string }> {
+  return request("/auth/dev/ensure-admin", { method: "POST" });
 }
 
 export async function searchProviders(params?: {
@@ -685,6 +782,25 @@ export async function listAdminPatients(): Promise<PatientRecord[]> {
   return request("/admin/patients");
 }
 
+export async function setAdminUserRole(body: {
+  phone: string;
+  role: "patient" | "provider";
+  display_name?: string;
+  specialty?: string;
+  facility?: string;
+}): Promise<{
+  supabase_user_id: string;
+  phone: string;
+  role: string;
+  provider_id: string | null;
+}> {
+  return request("/admin/users/set-role", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function uploadProviderCredential(
   docType: string,
   file: File,
@@ -805,5 +921,3 @@ export async function unsubscribeFromPush(endpoint: string): Promise<{ ok: boole
     body: JSON.stringify({ endpoint }),
   });
 }
-
-export { ApiError };

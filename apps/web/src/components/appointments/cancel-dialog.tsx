@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SecondaryButton } from "@/components/ui/buttons";
 
 const REASONS = [
@@ -12,12 +12,26 @@ const REASONS = [
 
 export function CancelDialog({
   onConfirm,
+  disabled = false,
 }: {
   onConfirm: (reason: string) => Promise<void>;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState(REASONS[0]);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (disabled) {
+      setOpen(false);
+      setError(null);
+    }
+  }, [disabled]);
+
+  if (disabled) {
+    return null;
+  }
 
   if (!open) {
     return (
@@ -39,14 +53,18 @@ export function CancelDialog({
           </option>
         ))}
       </select>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       <div className="mt-3 flex gap-2">
         <SecondaryButton
           disabled={busy}
           onClick={async () => {
             setBusy(true);
+            setError(null);
             try {
               await onConfirm(reason);
               setOpen(false);
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Could not cancel appointment");
             } finally {
               setBusy(false);
             }

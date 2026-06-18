@@ -20,7 +20,7 @@ from datetime import datetime
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Appointment, Encounter, Provider
+from app.db.models import Appointment, Brief, Encounter, Patient, Provider
 from app.db.models import Reminder as ReminderRow
 from app.errors import FORBIDDEN, VALIDATION_ERROR, AppError, not_found
 from app.ids import new_id
@@ -171,6 +171,23 @@ async def transition(
 
     # Legal-edge gate.
     current = AppointmentStatus(appt.status)
+
+    # Idempotent accept: double-click or stale UI may retry after already accepted.
+    if (
+        action == "accept"
+        and current == AppointmentStatus.accepted
+        and actor_role == "provider"
+        and provider is not None
+        and appt.provider_id == provider.id
+    ):
+        return appt
+
+    if action == "complete" and current == AppointmentStatus.completed:
+        return appt
+
+    if action == "cancel" and current == AppointmentStatus.cancelled:
+        return appt
+
     if current not in rule["from"]:
         raise AppError(
             VALIDATION_ERROR,
@@ -302,15 +319,67 @@ async def list_for_role(
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def batch_patient_fields(
+    db: AsyncSession, patient_ids: set[str]
+) -> dict[str, dict[str, str | None]]:
+    """Batch-resolve patient display names and latest brief chief concern."""
+    if not patient_ids:
+        return {}
+    patients = (
+        await db.execute(select(Patient).where(Patient.id.in_(patient_ids)))
+    ).scalars().all()
+    name_by_id = {p.id: p.display_name for p in patients}
+
+    brief_rows = (
+        await db.execute(
+            select(Brief)
+            .where(Brief.patient_id.in_(patient_ids))
+            .order_by(Brief.generated_at.desc())
+        )
+    ).scalars().all()
+    concern_by_id: dict[str, str | None] = {}
+    for row in brief_rows:
+        if row.patient_id not in concern_by_id:
+            concern_by_id[row.patient_id] = (row.brief_json or {}).get("chief_concern") or None
+
+    return {
+        pid: {
+            "patient_display_name": name_by_id.get(pid),
+            "chief_concern": concern_by_id.get(pid),
+        }
+        for pid in patient_ids
+    }
+
+
+async def enrich_dtos(db: AsyncSession, appts: list[Appointment]) -> list[dict]:
+    """Batch joined fields for appointment DTOs (avoids N+1 on lists)."""
+    if not appts:
+        return []
+    patient_fields = await batch_patient_fields(db, {a.patient_id for a in appts})
+    provider_ids = {a.provider_id for a in appts if a.provider_id}
+    provider_map: dict[str, Provider] = {}
+    if provider_ids:
+        providers = (
+            await db.execute(select(Provider).where(Provider.id.in_(provider_ids)))
+        ).scalars().all()
+        provider_map = {p.id: p for p in providers}
+
+    out: list[dict] = []
+    for appt in appts:
+        pf = patient_fields.get(appt.patient_id, {})
+        pr = provider_map.get(appt.provider_id) if appt.provider_id else None
+        out.append(
+            {
+                "provider_name": pr.display_name if pr else None,
+                "provider_specialty": pr.specialty if pr else None,
+                "patient_display_name": pf.get("patient_display_name"),
+                "chief_concern": pf.get("chief_concern"),
+            }
+        )
+    return out
+
+
 async def to_dto_fields(db: AsyncSession, appt: Appointment) -> dict:
-    """Resolve joined provider info for the DTO (single extra query when assigned)."""
-    provider_name = None
-    provider_specialty = None
-    if appt.provider_id:
-        provider = (
-            await db.execute(select(Provider).where(Provider.id == appt.provider_id))
-        ).scalar_one_or_none()
-        if provider is not None:
-            provider_name = provider.display_name
-            provider_specialty = provider.specialty
-    return {"provider_name": provider_name, "provider_specialty": provider_specialty}
+    """Resolve joined provider + patient info for a single appointment DTO."""
+    enriched = await enrich_dtos(db, [appt])
+    return enriched[0] if enriched else {}

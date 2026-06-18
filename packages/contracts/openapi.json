@@ -356,6 +356,17 @@
       },
       "AppointmentDTO": {
         "properties": {
+          "chief_concern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chief Concern"
+          },
           "consult_room": {
             "anyOf": [
               {
@@ -386,6 +397,17 @@
               }
             ],
             "title": "Notes"
+          },
+          "patient_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patient Display Name"
           },
           "patient_id": {
             "title": "Patient Id",
@@ -697,6 +719,27 @@
         "title": "AvailabilitySetRequest",
         "type": "object"
       },
+      "BatchUploadResponse": {
+        "properties": {
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentUploadResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "batch_id",
+          "items"
+        ],
+        "title": "BatchUploadResponse",
+        "type": "object"
+      },
       "Body_proxy_upload_api_v1_workers_patients__patient_id__documents_post": {
         "properties": {
           "doc_type": {
@@ -769,6 +812,39 @@
           "patient_id"
         ],
         "title": "Body_upload_document_api_v1_documents_post",
+        "type": "object"
+      },
+      "Body_upload_documents_batch_api_v1_documents_batch_post": {
+        "properties": {
+          "doc_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Type"
+          },
+          "files": {
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "files",
+          "patient_id"
+        ],
+        "title": "Body_upload_documents_batch_api_v1_documents_batch_post",
         "type": "object"
       },
       "Body_webchat_message_api_v1_webchat_message_post": {
@@ -1284,6 +1360,29 @@
         "title": "ConsentDTO",
         "type": "object"
       },
+      "ConsentStatusDTO": {
+        "properties": {
+          "granted": {
+            "title": "Granted",
+            "type": "boolean"
+          },
+          "patient_id": {
+            "title": "Patient Id",
+            "type": "string"
+          },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "patient_id",
+          "purpose",
+          "granted"
+        ],
+        "title": "ConsentStatusDTO",
+        "type": "object"
+      },
       "ConsentWithdrawRequest": {
         "properties": {
           "patient_id": {
@@ -1739,6 +1838,11 @@
           "document_id": {
             "title": "Document Id",
             "type": "string"
+          },
+          "duplicate": {
+            "default": false,
+            "title": "Duplicate",
+            "type": "boolean"
           },
           "job_id": {
             "title": "Job Id",
@@ -3265,6 +3369,100 @@
         "title": "SaathiResponse",
         "type": "object"
       },
+      "SetUserRoleRequest": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "facility": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facility"
+          },
+          "phone": {
+            "minLength": 10,
+            "title": "Phone",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "patient",
+              "provider"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "specialty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specialty"
+          }
+        },
+        "required": [
+          "phone",
+          "role"
+        ],
+        "title": "SetUserRoleRequest",
+        "type": "object"
+      },
+      "SetUserRoleResponse": {
+        "properties": {
+          "phone": {
+            "title": "Phone",
+            "type": "string"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
+          },
+          "role": {
+            "enum": [
+              "patient",
+              "provider"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "supabase_user_id": {
+            "title": "Supabase User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "supabase_user_id",
+          "phone",
+          "role"
+        ],
+        "title": "SetUserRoleResponse",
+        "type": "object"
+      },
       "ShareCreateRequest": {
         "properties": {
           "expires_in": {
@@ -4576,6 +4774,53 @@
         ]
       }
     },
+    "/api/v1/admin/users/set-role": {
+      "post": {
+        "description": "Switch a mobile user between patient and doctor portals.",
+        "operationId": "set_user_role_api_v1_admin_users_set_role_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetUserRoleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set User Role",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
     "/api/v1/appointments": {
       "get": {
         "operationId": "list_appointments_api_v1_appointments_get",
@@ -4782,7 +5027,7 @@
     },
     "/api/v1/appointments/{appointment_id}/patient-context": {
       "get": {
-        "description": "Provider-only: load CurrentTruth + latest brief for the appointment's patient.",
+        "description": "Provider-only: CurrentTruth + latest brief + longitudinal history.\n\nHistory fields (all derived from existing data, no new tables):\n- past_briefs: last 3 briefs ordered by generated_at desc (one_line + generated_at)\n- med_history: per medication normalized_key, ordered list of observed claims\n  (date + dose + frequency) — shows when the med was added or changed\n- lab_trends: per lab normalized_key, the history series already embedded in\n  current_truth.value.history (reused, not recomputed)\n- vital_trends: per vital_type, up to 10 recent scalar readings from the Vital table",
         "operationId": "appointment_patient_context_api_v1_appointments__appointment_id__patient_context_get",
         "parameters": [
           {
@@ -4921,6 +5166,30 @@
         "summary": "Appointment Visit Summary",
         "tags": [
           "appointments"
+        ]
+      }
+    },
+    "/api/v1/auth/dev/ensure-admin": {
+      "post": {
+        "description": "Create or reset the dev admin account (local only). No auth required.",
+        "operationId": "ensure_dev_admin_api_v1_auth_dev_ensure_admin_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Ensure Dev Admin Api V1 Auth Dev Ensure Admin Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ensure Dev Admin",
+        "tags": [
+          "auth"
         ]
       }
     },
@@ -5178,6 +5447,64 @@
         ]
       }
     },
+    "/api/v1/consent/status": {
+      "get": {
+        "description": "Whether this patient already granted consent (survives logout / new browser).",
+        "operationId": "consent_status_api_v1_consent_status_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "default": "document_processing",
+              "title": "Purpose",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsentStatusDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Consent Status",
+        "tags": [
+          "consent"
+        ]
+      }
+    },
     "/api/v1/consent/withdraw": {
       "post": {
         "operationId": "withdraw_consent_api_v1_consent_withdraw_post",
@@ -5265,6 +5592,52 @@
           }
         ],
         "summary": "Upload Document",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/api/v1/documents/batch": {
+      "post": {
+        "operationId": "upload_documents_batch_api_v1_documents_batch_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_documents_batch_api_v1_documents_batch_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchUploadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Upload Documents Batch",
         "tags": [
           "documents"
         ]
@@ -5861,6 +6234,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Get Job",
         "tags": [
           "jobs"
@@ -5904,6 +6282,11 @@
             "description": "Validation Error"
           }
         },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "summary": "Retry Job",
         "tags": [
           "jobs"
@@ -6958,6 +7341,54 @@
         "summary": "Saathi Chat",
         "tags": [
           "saathi"
+        ]
+      }
+    },
+    "/api/v1/patients/{patient_id}/share": {
+      "get": {
+        "description": "Latest valid share link + QR for this patient (created during upload or on /share).",
+        "operationId": "get_latest_patient_share_api_v1_patients__patient_id__share_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "patient_id",
+            "required": true,
+            "schema": {
+              "title": "Patient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareDTO"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Latest Patient Share",
+        "tags": [
+          "shares"
         ]
       }
     },

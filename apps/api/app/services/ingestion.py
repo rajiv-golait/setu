@@ -44,13 +44,12 @@ async def require_consent(db: AsyncSession, patient_id: str) -> None:
         )
 
 
-async def store_upload(file: UploadFile) -> tuple[str, str, str, str, str | None]:
-    """Validate + persist the uploaded file.
+def sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
 
-    Returns (storage_path, mime, doc_type, original_hash). The hash is a
-    permanent sha256 of the raw bytes so claims stay auditable to the source
-    even after the raw image is purged (retention/erasure).
-    """
+
+async def read_upload(file: UploadFile) -> tuple[bytes, str]:
+    """Read and validate upload bytes without persisting (for dedup before store)."""
     mime = file.content_type or "application/octet-stream"
     if mime not in _ALLOWED_MIME:
         raise AppError(VALIDATION_ERROR, f"Unsupported file type: {mime}", details={"mime": mime})
@@ -63,12 +62,27 @@ async def store_upload(file: UploadFile) -> tuple[str, str, str, str, str | None
             f"File exceeds {settings.MAX_UPLOAD_MB}MB limit",
             details={"size": len(data)},
         )
+    return data, mime
 
-    original_hash = hashlib.sha256(data).hexdigest()
+
+def store_bytes(data: bytes, mime: str) -> tuple[str, str, str, str, str | None]:
+    """Persist validated bytes. Returns (path, mime, doc_type, original_hash, enc_key)."""
+    original_hash = sha256_hex(data)
     doc_id = new_id("doc")
     storage = get_storage()
     path, key_id = storage.put(data, mime=mime, doc_id=doc_id)
     return path, mime, _guess_doc_type(mime), original_hash, key_id
+
+
+async def store_upload(file: UploadFile) -> tuple[str, str, str, str, str | None]:
+    """Validate + persist the uploaded file.
+
+    Returns (storage_path, mime, doc_type, original_hash). The hash is a
+    permanent sha256 of the raw bytes so claims stay auditable to the source
+    even after the raw image is purged (retention/erasure).
+    """
+    data, mime = await read_upload(file)
+    return store_bytes(data, mime)
 
 
 async def create_document(

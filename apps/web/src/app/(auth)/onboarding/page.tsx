@@ -3,21 +3,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
+import { LanguagePicker } from "@/components/profile/language-picker";
 import { updatePatientMe } from "@/lib/api";
+import { isPatientLang, type PatientLang } from "@/lib/constants/langs";
 import { usePatient } from "@/lib/hooks/use-patient";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
-import { cn } from "@/lib/cn";
-
-const LANGS = [
-  { id: "mr" as const, label: "मराठी", sub: "Marathi" },
-  { id: "hi" as const, label: "हिंदी", sub: "Hindi" },
-  { id: "en" as const, label: "English", sub: "English" },
-];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const { patient, ready, ensurePatient, refreshPatient } = usePatient();
-  const [lang, setLang] = useState<(typeof LANGS)[number]["id"]>("mr");
+  const [lang, setLang] = useState<PatientLang>("mr");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -29,9 +24,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (patient?.onboardingCompleted) {
       router.replace("/");
-    } else if (patient?.langPref) {
-      const pref = patient.langPref as (typeof LANGS)[number]["id"];
-      if (LANGS.some((l) => l.id === pref)) setLang(pref);
+    } else if (patient?.langPref && isPatientLang(patient.langPref)) {
+      setLang(patient.langPref);
     }
   }, [patient, router]);
 
@@ -56,23 +50,8 @@ export default function OnboardingPage() {
       <h1 className="text-[26px] font-semibold">Choose your language</h1>
       <p className="mt-2 text-sm text-text-muted">भाषा निवडा · भाषा चुनें</p>
 
-      <div className="mt-8 space-y-3">
-        {LANGS.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            onClick={() => setLang(l.id)}
-            className={cn(
-              "flex w-full items-center justify-between rounded-card border px-4 py-4 text-left",
-              lang === l.id
-                ? "border-primary bg-[#EEF4F0] shadow-card"
-                : "border-border bg-surface-raised",
-            )}
-          >
-            <span className="text-lg font-semibold">{l.label}</span>
-            <span className="text-sm text-text-muted">{l.sub}</span>
-          </button>
-        ))}
+      <div className="mt-8">
+        <LanguagePicker value={lang} onChange={setLang} disabled={loading} />
       </div>
 
       <PrimaryButton className="mt-8" disabled={loading} onClick={save}>

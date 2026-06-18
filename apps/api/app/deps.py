@@ -265,3 +265,21 @@ async def require_admin(role: str = Depends(get_user_role)) -> str:
     if role != "admin":
         raise AppError(FORBIDDEN, "Admin role required", retryable=False)
     return role
+
+
+async def require_patient_or_provider_access(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    role: str = Depends(get_user_role),
+    auth_user_id: str | None = Depends(get_auth_user_id),
+) -> Patient:
+    """Patient reads their own record; provider reads via grant or appointment.
+
+    Use this for endpoints that are legitimately accessible to BOTH the owning
+    patient AND a doctor with an active access relationship (brief, memory, etc.).
+    The public token share routes are unaffected — they never reach this dep.
+    """
+    if role == "provider":
+        provider = await get_or_create_provider(db, auth_user_id)  # type: ignore[arg-type]
+        return await require_provider_patient_access(patient_id, provider, db)
+    return await _check_patient_access(patient_id, db, auth_user_id)

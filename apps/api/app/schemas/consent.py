@@ -67,3 +67,9 @@ class ConsentWithdrawResponse(BaseModel):
     withdrawn: bool
     patient_id: str
     purpose: str
+
+
+class ConsentStatusDTO(BaseModel):
+    patient_id: str
+    purpose: str
+    granted: bool

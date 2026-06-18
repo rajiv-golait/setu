@@ -21,6 +21,7 @@ from app.errors import register_exception_handlers
 from app.routers import admin_appointments_router as admin_appointments
 from app.routers import admin_patients_router as admin_patients
 from app.routers import admin_providers_router as admin_providers
+from app.routers import admin_users_router as admin_users
 from app.routers import analytics_router as analytics
 from app.routers import appointments_router as appointments
 from app.routers import auth_router as auth
@@ -84,6 +85,9 @@ async def lifespan(app: FastAPI):
     # Push reminder loop (no-op if VAPID keys not set).
     from app.services.scheduler import reminder_push_loop
     asyncio.create_task(reminder_push_loop())
+    # Pipeline worker — drains Redis queue with bounded concurrency.
+    from app.services.pipeline_worker import pipeline_worker_loop
+    asyncio.create_task(pipeline_worker_loop())
     # Ensure push_subscriptions table exists (idempotent — migration may not have run yet).
     try:
         from sqlalchemy import text as _text
@@ -103,6 +107,17 @@ async def lifespan(app: FastAPI):
             await _db.commit()
     except Exception as exc:  # noqa: BLE001
         logging.getLogger("setu").warning("push_subscriptions table check skipped: %s", exc)
+    if not settings.PRODUCTION and settings.SUPABASE_SERVICE_ROLE_KEY:
+        try:
+            from app.services import supabase_admin
+
+            uid = await supabase_admin.ensure_email_admin(
+                settings.DEV_ADMIN_EMAIL,
+                settings.DEV_ADMIN_PASSWORD,
+            )
+            logging.getLogger("setu").info("dev admin ready: %s (%s)", settings.DEV_ADMIN_EMAIL, uid)
+        except Exception as exc:  # noqa: BLE001
+            logging.getLogger("setu").warning("dev admin bootstrap skipped: %s", exc)
     # Retention sweep on boot: purge raw images past the retention window. Cheap,
     # idempotent, and never blocks startup. (A redeploy/restart is the schedule;
     # a real worker can call retention.purge_expired_documents on a timer.)
@@ -180,6 +195,7 @@ for r in (
     analytics,
     admin_providers,
     admin_patients,
+    admin_users,
     admin_appointments,
 ):
     app.include_router(r.router, prefix=API_PREFIX)
