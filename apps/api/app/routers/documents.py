@@ -12,7 +12,12 @@ from app.deps import _check_patient_access, get_auth_user_id, get_user_role, req
 from app.errors import VALIDATION_ERROR, AppError, not_found
 from app.ids import new_id
 from app.schemas.claims import ClaimsJSON
-from app.schemas.common import BatchUploadResponse, DocumentDTO, DocumentListItem, DocumentUploadResponse
+from app.schemas.common import (
+    BatchUploadResponse,
+    DocumentDTO,
+    DocumentListItem,
+    DocumentUploadResponse,
+)
 from app.services import retention
 from app.services.audit_phi import audit_phi_read
 from app.services.document_upload import upload_document_for_patient

@@ -70,7 +70,6 @@ async def _seed_provider(session_factory, provider_id: str, user_id: str) -> Non
 
 async def _seed_brief(session_factory, patient_id: str) -> str:
     """Insert a minimal brief row so GET /brief returns 200 not 404."""
-    import json
     from datetime import datetime, timezone
 
     from app.ids import new_id

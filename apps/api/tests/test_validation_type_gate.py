@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-import pytest
-
 from app.schemas.claims import Claim, ClaimsJSON
 from app.services.memory.reducer import reduce
 from app.services.validation import KNOWN_MEDICAL_TYPES, validate_claims

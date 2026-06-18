@@ -9,8 +9,12 @@ import asyncio
 import logging
 
 from app.config import settings
-from app.services.job_queue import dequeue_pipeline, release_pipeline_guard, release_processing_lock
-from app.services.job_queue import try_acquire_processing_lock
+from app.services.job_queue import (
+    dequeue_pipeline,
+    release_pipeline_guard,
+    release_processing_lock,
+    try_acquire_processing_lock,
+)
 from app.services.orchestrator import run_pipeline
 
 logger = logging.getLogger("setu.pipeline_worker")
