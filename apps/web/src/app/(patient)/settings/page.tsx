@@ -7,6 +7,12 @@ import { deletePatientData, getAccessLog, getNotificationPreferences, updateNoti
 import { usePatient } from "@/lib/hooks/use-patient";
 import { clearLocalConsent } from "@/lib/consent";
 import { ErrorPanel } from "@/components/ui/state-panel";
+import {
+  isSubscribed,
+  pushSupported,
+  subscribeToReminders,
+  unsubscribeFromReminders,
+} from "@/lib/push";
 import type { AccessLogEntry } from "@/lib/types";
 
 export default function SettingsPage() {
@@ -21,6 +27,9 @@ export default function SettingsPage() {
   const [ticketSubject, setTicketSubject] = useState("");
   const [ticketBody, setTicketBody] = useState("");
   const [ticketSent, setTicketSent] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushAvailable, setPushAvailable] = useState(false);
 
   useEffect(() => {
     if (!patient?.id) return;
@@ -31,6 +40,27 @@ export default function SettingsPage() {
       .then(setNotifPrefs)
       .catch(() => setNotifPrefs([]));
   }, [patient?.id]);
+
+  useEffect(() => {
+    if (!pushSupported()) return;
+    setPushAvailable(true);
+    isSubscribed().then(setPushOn).catch(() => setPushOn(false));
+  }, []);
+
+  const toggleReminders = async () => {
+    setPushBusy(true);
+    try {
+      if (pushOn) {
+        await unsubscribeFromReminders();
+        setPushOn(false);
+      } else {
+        const ok = await subscribeToReminders();
+        setPushOn(ok);
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const toggleNotif = async (channel: string, enabled: boolean) => {
     await updateNotificationPreference(channel, enabled);
@@ -93,6 +123,38 @@ export default function SettingsPage() {
         <div className="mt-4">
           <ErrorPanel title="Delete failed" message={error} />
         </div>
+      )}
+
+      {pushAvailable && (
+        <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">Medicine reminders</h2>
+              <p className="mt-1 text-sm text-text-muted">
+                {pushOn
+                  ? "On — Saathi will nudge you when it's time to take your medicines."
+                  : "Off — turn on a gentle nudge when it's time for your medicines."}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pushOn}
+              aria-label="Medicine reminders"
+              disabled={pushBusy}
+              onClick={toggleReminders}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+                pushOn ? "bg-success" : "bg-border-warm"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  pushOn ? "translate-x-[22px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </section>
       )}
 
       <section className="mt-6 rounded-card border border-border bg-surface-raised p-4 shadow-card">

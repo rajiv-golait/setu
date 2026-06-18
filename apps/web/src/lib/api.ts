@@ -112,6 +112,7 @@ export async function getPatientMe(): Promise<PatientRecord> {
 export async function updatePatientMe(body: {
   display_name?: string;
   lang_pref?: string;
+  onboarding_completed?: boolean;
 }): Promise<PatientRecord> {
   return request<PatientRecord>("/patients/me", {
     method: "PATCH",
@@ -184,6 +185,20 @@ export async function getBriefSnapshot(
 
 export async function getJob(jobId: string): Promise<JobStatus> {
   return request<JobStatus>(`/jobs/${jobId}`);
+}
+
+export async function retryJob(jobId: string): Promise<{ job_id: string; status: string }> {
+  return request(`/jobs/${jobId}/retry`, { method: "POST" });
+}
+
+export interface DocumentExplanation {
+  document_id: string;
+  explanation: string | null;
+  source?: string | null;
+}
+
+export async function getDocumentExplanation(docId: string): Promise<DocumentExplanation> {
+  return request<DocumentExplanation>(`/webchat/explanation/${docId}`);
 }
 
 export async function saathiChat(
@@ -352,6 +367,18 @@ export interface VisitSummary {
 
 export async function getAppointmentVisitSummary(appointmentId: string): Promise<VisitSummary> {
   return request(`/appointments/${appointmentId}/visit-summary`);
+}
+
+export interface PatientContext {
+  patient_id: string;
+  brief: Record<string, unknown> | null;
+  current_truth: CurrentTruth | null;
+}
+
+export async function getAppointmentPatientContext(
+  appointmentId: string,
+): Promise<PatientContext> {
+  return request<PatientContext>(`/appointments/${appointmentId}/patient-context`);
 }
 
 // --- Vitals ---
@@ -751,6 +778,32 @@ export async function uploadDocumentWithId(
   const headers: Record<string, string> = {};
   if (uploadId) headers["X-Upload-Id"] = uploadId;
   return request(`/documents`, { method: "POST", body: form, headers });
+}
+
+// --- Web Push (medicine reminders) ---
+
+export async function getVapidKey(): Promise<{ public_key: string }> {
+  return request<{ public_key: string }>("/push/vapid-key");
+}
+
+export async function subscribeToPush(body: {
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}): Promise<{ ok: boolean }> {
+  return request("/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export async function unsubscribeFromPush(endpoint: string): Promise<{ ok: boolean }> {
+  return request("/push/subscribe", {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint }),
+  });
 }
 
 export { ApiError };

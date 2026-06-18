@@ -32,16 +32,31 @@ self.addEventListener("sync", (event) => {
 
 self.addEventListener("push", (event) => {
   const d = event.data?.json() ?? {};
+  // Deep-link target travels with the notification so the click lands on Today
+  // (or the relevant screen) instead of a bare root.
+  const url = d.url || (d.data && d.data.url) || "/";
   event.waitUntil(
     self.registration.showNotification(d.title ?? "Setu", {
       body: d.body ?? "",
       icon: "/icon.svg",
       badge: "/icon.svg",
+      data: { url },
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow("/"));
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
 });

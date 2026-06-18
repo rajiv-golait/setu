@@ -3,37 +3,44 @@
 import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
+import { SaathiAvatar, type SaathiState } from "@/components/characters/saathi-avatar";
 import { getMemory, saathiChat } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
+import {
+  clearSaathiUnread,
+  loadSaathiHistory,
+  saveSaathiHistory,
+  type SaathiMessage,
+} from "@/lib/saathi-history";
 import type { CurrentTruth } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  action?: "urgent_care" | "see_doctor" | "monitor" | "none";
-}
-
-const SESSION_KEY = "setu_saathi_history";
-
-function loadHistory(): Message[] {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as Message[]) : [];
-  } catch {
-    return [];
+function groundingChips(memory: CurrentTruth | null, lang: "mr" | "hi" | "en"): string[] {
+  if (!memory) return [];
+  const meds = memory.entries.filter((e) => e.entry_type === "medication").length;
+  const labs = memory.entries.filter((e) => e.entry_type === "lab_result").length;
+  const allergies = memory.entries.filter((e) => e.entry_type === "allergy");
+  const chips: string[] = [];
+  const t = (en: string, mr: string, hi: string) => (lang === "mr" ? mr : lang === "hi" ? hi : en);
+  if (meds > 0) chips.push(t(`your ${meds} medicine${meds > 1 ? "s" : ""}`, `तुमची ${meds} औषधे`, `आपकी ${meds} दवाइयाँ`));
+  if (labs > 0) chips.push(t("your lab trends", "तुमचे रिपोर्ट", "आपकी रिपोर्ट"));
+  if (allergies.length > 0) {
+    const sub = String(allergies[0].value.substance ?? allergies[0].normalized_key);
+    chips.push(t(`your ${sub} allergy`, `${sub} ची ॲलर्जी`, `${sub} एलर्जी`));
   }
+  return chips;
 }
 
-function saveHistory(msgs: Message[]) {
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(msgs.slice(-20)));
-  } catch {}
+function warmGreeting(name: string, lang: "mr" | "hi" | "en"): string {
+  const first = name || (lang === "en" ? "friend" : "मित्रा");
+  if (lang === "mr") return `नमस्कार ${name || "मित्रा"}! मी साथी. तुमच्या औषधांबद्दल किंवा रिपोर्टबद्दल काहीही विचारा — मी तुमच्या नोंदींमधून सोप्या भाषेत सांगेन.`;
+  if (lang === "hi") return `नमस्ते ${name || "दोस्त"}! मैं साथी हूँ। अपनी दवाइयों या रिपोर्ट के बारे में कुछ भी पूछें — मैं आपके रिकॉर्ड से आसान भाषा में बताऊँगा।`;
+  return `Hi ${first}! I'm Saathi. Ask me anything about your medicines or reports — I'll explain from your records, in simple words.`;
 }
 
 export default function ChatPage() {
   const { patient, ready } = usePatient();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<SaathiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [memory, setMemory] = useState<CurrentTruth | null>(null);
@@ -41,54 +48,51 @@ export default function ChatPage() {
   const lang = (patient?.langPref ?? "mr") as "mr" | "en" | "hi";
   const usesDevanagari = lang === "mr" || lang === "hi";
 
-  // Load chat history from sessionStorage and memory on mount.
+  // Load any proactive history (e.g. a new-medicine message) and clear the unread flag.
   useEffect(() => {
-    setMessages(loadHistory());
+    setMessages(loadSaathiHistory());
+    clearSaathiUnread();
   }, []);
 
   useEffect(() => {
     if (!ready || !patient?.id) return;
-    getMemory(patient.id)
-      .then(setMemory)
-      .catch(() => undefined);
+    getMemory(patient.id).then(setMemory).catch(() => undefined);
   }, [patient?.id, ready]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, loading]);
 
   async function send() {
     const text = input.trim();
     if (!text || loading || !patient?.id) return;
 
-    const userMsg: Message = { role: "user", content: text };
+    const userMsg: SaathiMessage = { role: "user", content: text };
     const next = [...messages, userMsg];
     setMessages(next);
     setInput("");
     setLoading(true);
 
     try {
-      const history = next
-        .slice(-12)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const history = next.slice(-12).map((m) => ({ role: m.role, content: m.content }));
       const res = await saathiChat(patient.id, text, history, lang);
-      const assistantMsg: Message = {
+      const assistantMsg: SaathiMessage = {
         role: "assistant",
         content: res.reply,
-        action: res.action as Message["action"],
+        action: res.action as SaathiMessage["action"],
       };
       const updated = [...next, assistantMsg];
       setMessages(updated);
-      saveHistory(updated);
+      saveSaathiHistory(updated);
     } catch {
-      const errMsg: Message = {
+      const errMsg: SaathiMessage = {
         role: "assistant",
         content:
           lang === "mr"
-            ? "माफ करा, सध्या उत्तर देता येत नाही. डॉक्टरांशी बोला."
+            ? "माफ करा, सध्या उत्तर देता येत नाही. कृपया थोड्या वेळाने पुन्हा प्रयत्न करा."
             : lang === "hi"
-              ? "माफ़ करें, अभी उत्तर नहीं दे सकते। डॉक्टर से बात करें।"
-              : "Sorry, I can't answer right now. Please speak with your doctor.",
+              ? "माफ़ करें, अभी जवाब नहीं दे पा रहा। थोड़ी देर बाद फिर कोशिश करें।"
+              : "I couldn't reach my notes just now — please try again in a moment.",
         action: "none",
       };
       setMessages([...next, errMsg]);
@@ -97,55 +101,68 @@ export default function ChatPage() {
     }
   }
 
-  const meds = memory?.entries.filter((e) => e.entry_type === "medication") ?? [];
+  const chips = groundingChips(memory, lang);
+  const headerState: SaathiState = loading ? "thinking" : "idle";
 
   return (
-    <div className="flex h-screen flex-col" lang={lang}>
-      {/* Header */}
-      <div className="border-b border-border bg-surface-raised px-5 pt-5 pb-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary-light">
-          आपला आरोग्य सहायक
-        </p>
-        <h1 className={cn("text-[23px] font-semibold", usesDevanagari && "font-devanagari")}>
-          Saathi
-        </h1>
-        {meds.length > 0 && (
-          <p className="mt-1 text-xs text-text-muted">
-            {meds.length} medicine{meds.length > 1 ? "s" : ""} on file
-          </p>
+    <div className="flex h-screen flex-col bg-surface" lang={lang}>
+      {/* Header — Saathi's home */}
+      <div className="border-b border-saathi-border bg-saathi-bg px-5 pb-3 pt-5">
+        <div className="flex items-center gap-3">
+          <SaathiAvatar state={headerState} size={44} label={null} />
+          <div>
+            <h1 className={cn("font-display text-[22px] font-semibold text-text", usesDevanagari && "font-devanagari")}>
+              Saathi
+            </h1>
+            <p className="text-xs font-semibold text-saathi-deep">
+              {lang === "mr" ? "तुमचा आरोग्य सोबती" : lang === "hi" ? "आपका सेहत साथी" : "your health companion"}
+            </p>
+          </div>
+        </div>
+        {chips.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <span className="text-[11px] font-semibold text-text-muted">
+              {lang === "mr" ? "साथीला माहीत आहे:" : lang === "hi" ? "साथी जानता है:" : "Saathi knows:"}
+            </span>
+            {chips.map((c) => (
+              <span
+                key={c}
+                className={cn(
+                  "rounded-full border border-saathi-border bg-white px-2 py-0.5 text-[11px] font-medium text-saathi-deep",
+                  usesDevanagari && "font-devanagari",
+                )}
+              >
+                {c}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
-          <div className="mt-8 text-center text-text-muted">
-            <p className={cn("text-base", usesDevanagari && "font-devanagari")}>
-              {lang === "mr"
-                ? "तुमच्या आरोग्याबद्दल प्रश्न विचारा"
-                : lang === "hi"
-                  ? "अपनी सेहत के बारे में पूछें"
-                  : "Ask about your health records"}
-            </p>
-            <p className="mt-2 text-xs">
-              {lang === "en"
-                ? "Saathi only knows what's in your health records."
-                : lang === "mr"
-                  ? "साथी फक्त तुमच्या नोंदींमधून उत्तर देतो."
-                  : "साथी केवल आपके रिकॉर्ड से जवाब देता है।"}
-            </p>
-          </div>
+          <ChatBubble role="assistant" content={warmGreeting(patient?.displayName?.split(" ")[0] ?? "", lang)} />
         )}
         {messages.map((m, i) => (
-          <ChatBubble key={i} role={m.role} content={m.content} action={m.action} />
+          <ChatBubble
+            key={i}
+            role={m.role}
+            content={m.content}
+            action={m.action}
+            showAvatar={m.role === "assistant" && (i === 0 || messages[i - 1]?.role !== "assistant")}
+          />
         ))}
         {loading && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-surface-raised border border-border px-4 py-3">
+          <div className="flex items-start gap-2">
+            <div className="w-8 shrink-0 pt-1">
+              <SaathiAvatar state="thinking" size={32} label={null} />
+            </div>
+            <div className="rounded-2xl rounded-tl-sm border border-saathi-border bg-saathi-bg px-4 py-3">
               <span className="flex gap-1">
-                <span className="h-2 w-2 animate-pulse-dot rounded-full bg-text-muted" style={{ animationDelay: "0ms" }} />
-                <span className="h-2 w-2 animate-pulse-dot rounded-full bg-text-muted" style={{ animationDelay: "150ms" }} />
-                <span className="h-2 w-2 animate-pulse-dot rounded-full bg-text-muted" style={{ animationDelay: "300ms" }} />
+                <span className="h-2 w-2 animate-saathi-dot rounded-full bg-saathi" style={{ animationDelay: "0ms" }} />
+                <span className="h-2 w-2 animate-saathi-dot rounded-full bg-saathi" style={{ animationDelay: "180ms" }} />
+                <span className="h-2 w-2 animate-saathi-dot rounded-full bg-saathi" style={{ animationDelay: "360ms" }} />
               </span>
             </div>
           </div>
@@ -158,7 +175,7 @@ export default function ChatPage() {
         <div className="flex items-end gap-2">
           <textarea
             className={cn(
-              "flex-1 resize-none rounded-[14px] border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-primary",
+              "flex-1 resize-none rounded-[14px] border border-border bg-surface px-4 py-3 text-sm outline-none focus:border-saathi",
               usesDevanagari && "font-devanagari",
             )}
             rows={1}
@@ -171,18 +188,15 @@ export default function ChatPage() {
               }
             }}
             placeholder={
-              lang === "mr"
-                ? "प्रश्न विचारा…"
-                : lang === "hi"
-                  ? "प्रश्न पूछें…"
-                  : "Ask a question…"
+              lang === "mr" ? "प्रश्न विचारा…" : lang === "hi" ? "प्रश्न पूछें…" : "Ask Saathi a question…"
             }
           />
           <button
             type="button"
             onClick={() => void send()}
             disabled={loading || !input.trim()}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white disabled:opacity-40"
+            aria-label="Send"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-saathi text-white disabled:opacity-40"
           >
             <Send className="h-5 w-5" strokeWidth={1.8} />
           </button>

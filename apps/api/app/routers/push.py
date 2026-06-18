@@ -20,6 +20,10 @@ class SubscribeRequest(BaseModel):
     auth: str
 
 
+class UnsubscribeRequest(BaseModel):
+    endpoint: str
+
+
 @router.get("/vapid-key")
 async def get_vapid_key() -> dict:
     if not settings.VAPID_PUBLIC_KEY:
@@ -53,7 +57,7 @@ async def subscribe(
 
 @router.delete("/subscribe")
 async def unsubscribe(
-    body: SubscribeRequest,
+    body: UnsubscribeRequest,
     db: AsyncSession = Depends(get_db),
     user_id: str | None = Depends(get_auth_user_id),
 ) -> dict:

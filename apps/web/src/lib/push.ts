@@ -1,63 +1,89 @@
-import { API_BASE } from "./constants";
+import { getVapidKey, subscribeToPush, unsubscribeFromPush } from "@/lib/api";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+  const out = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i += 1) out[i] = rawData.charCodeAt(i);
+  return out;
 }
 
-export async function subscribeToReminders(): Promise<void> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-    return;
-  }
+export function pushSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
+}
 
-  // Only subscribe if the user has already granted permission or hasn't been asked.
+/** Is there already an active push subscription in this browser? */
+export async function isSubscribed(): Promise<boolean> {
+  if (!pushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return (await reg.pushManager.getSubscription()) !== null;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Requests permission, creates a push subscription, and registers it with the
+ * backend (authenticated). Returns true only if fully subscribed.
+ * Call this AFTER the user has accepted the in-app pre-prompt.
+ */
+export async function subscribeToReminders(): Promise<boolean> {
+  if (!pushSupported()) return false;
+
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") return;
+  if (permission !== "granted") return false;
 
   const reg = await navigator.serviceWorker.ready;
 
-  // Fetch VAPID public key — if push isn't configured, server returns 503 and we bail.
   let publicKey: string;
   try {
-    const res = await fetch(`${API_BASE}/push/vapid-key`);
-    if (!res.ok) return;
-    const data = await res.json();
-    publicKey = data.public_key;
+    const { public_key } = await getVapidKey();
+    if (!public_key) return false;
+    publicKey = public_key;
   } catch {
-    return;
+    return false; // push not configured on the server
   }
 
-  const existing = await reg.pushManager.getSubscription();
-  if (existing) {
-    // Already subscribed — ensure it's registered with our backend.
-    await _registerWithBackend(existing);
-    return;
+  let subscription = await reg.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+    });
   }
 
-  const subscription = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  });
-
-  await _registerWithBackend(subscription);
-}
-
-async function _registerWithBackend(sub: PushSubscription): Promise<void> {
-  const json = sub.toJSON();
+  const json = subscription.toJSON();
   const keys = json.keys ?? {};
   try {
-    await fetch(`${API_BASE}/push/subscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: sub.endpoint,
-        p256dh: keys.p256dh ?? "",
-        auth: keys.auth ?? "",
-      }),
+    await subscribeToPush({
+      endpoint: subscription.endpoint,
+      p256dh: keys.p256dh ?? "",
+      auth: keys.auth ?? "",
     });
+    return true;
   } catch {
-    // Non-fatal — push subscription will be retried on next app load.
+    return false;
+  }
+}
+
+/** Turn off medicine reminders: remove the local subscription + backend row. */
+export async function unsubscribeFromReminders(): Promise<boolean> {
+  if (!pushSupported()) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return true;
+    await unsubscribeFromPush(sub.endpoint).catch(() => undefined);
+    await sub.unsubscribe();
+    return true;
+  } catch {
+    return false;
   }
 }

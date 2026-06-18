@@ -16,12 +16,14 @@ class PatientCreateRequest(BaseModel):
 class PatientUpdateRequest(BaseModel):
     display_name: str | None = None
     lang_pref: str | None = None
+    onboarding_completed: bool | None = None
 
 
 class PatientDTO(BaseModel):
     id: str
     display_name: str | None = None
     lang_pref: str = "mr"
+    onboarding_completed: bool = False
     created_at: datetime
     # patient_token only returned on creation; None otherwise.
     patient_token: str | None = None

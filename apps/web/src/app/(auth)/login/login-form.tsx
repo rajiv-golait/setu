@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
-import { getAuthMe, getProviderMe } from "@/lib/api";
+import { getAuthMe, getPatientMe, getProviderMe } from "@/lib/api";
 import { homeForRole, roleFromMetadata, type UserRole } from "@/lib/auth/role";
 import { createClient } from "@/lib/supabase/client";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
@@ -32,6 +32,11 @@ const PORTAL_COPY: Record<
     otherLabel: "Patient? Sign in here",
   },
 };
+
+async function patientDestAfterLogin(): Promise<string> {
+  const record = await getPatientMe().catch(() => null);
+  return record?.onboarding_completed ? "/" : "/onboarding";
+}
 
 function roleAllowedOnPortal(portal: LoginPortal, role: UserRole): boolean {
   if (portal === "provider") return role === "provider" || role === "admin";
@@ -133,7 +138,7 @@ export default function LoginForm({ portal = "patient" }: LoginFormProps) {
         } else if (portal === "provider") {
           dest = "/doctor";
         } else if (portal === "patient" && dest === "/") {
-          dest = me.role === "patient" ? "/onboarding" : homeForRole(me.role as UserRole);
+          dest = me.role === "patient" ? await patientDestAfterLogin() : homeForRole(me.role as UserRole);
         }
       } catch {
         if (next.startsWith("/login") || next.startsWith("/doctor/login")) {
@@ -141,7 +146,7 @@ export default function LoginForm({ portal = "patient" }: LoginFormProps) {
         } else if (portal === "provider") {
           dest = "/doctor";
         } else if (portal === "patient" && dest === "/") {
-          dest = role === "patient" ? "/onboarding" : homeForRole(role);
+          dest = role === "patient" ? await patientDestAfterLogin() : homeForRole(role);
         }
       }
 
@@ -166,7 +171,7 @@ export default function LoginForm({ portal = "patient" }: LoginFormProps) {
             <input
               type="tel"
               inputMode="tel"
-              placeholder="9876543210"
+              placeholder="Enter 10-digit mobile number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-2 w-full rounded-card border border-border bg-surface-raised px-4 py-3 text-base"
@@ -184,7 +189,7 @@ export default function LoginForm({ portal = "patient" }: LoginFormProps) {
             <input
               type="text"
               inputMode="numeric"
-              placeholder="123456"
+              placeholder="Enter 6-digit OTP"
               value={otp}
               onChange={(e) => setOtp(e.target.value)}
               className="mt-2 w-full rounded-card border border-border bg-surface-raised px-4 py-3 text-base tracking-widest"

@@ -1,14 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Noto_Sans_Devanagari } from "next/font/google";
+import { Baloo_2, IBM_Plex_Mono, Mukta } from "next/font/google";
 import { PatientProvider } from "@/lib/hooks/use-patient";
 import { ServiceWorkerRegister } from "@/components/layout/service-worker-register";
 import { LocaleHtmlLang } from "@/components/layout/locale-html-lang";
 import "./globals.css";
 
-const ibmPlex = IBM_Plex_Sans({
-  subsets: ["latin"],
+// Baloo 2 — rounded, warm display + Saathi's voice. Covers Latin + Devanagari.
+const baloo = Baloo_2({
+  subsets: ["latin", "devanagari"],
+  weight: ["500", "600", "700"],
+  variable: "--font-baloo",
+  display: "swap",
+});
+
+// Mukta — clean, legible body. Covers Latin + Devanagari, vernacular-first.
+const mukta = Mukta({
+  subsets: ["latin", "devanagari"],
   weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex",
+  variable: "--font-mukta",
   display: "swap",
 });
 
@@ -16,13 +25,6 @@ const ibmMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-ibm-mono",
-  display: "swap",
-});
-
-const notoDevanagari = Noto_Sans_Devanagari({
-  subsets: ["devanagari"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-noto-devanagari",
   display: "swap",
 });
 
@@ -37,14 +39,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#1B4332",
+  themeColor: "#0F766E",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body
-        className={`${ibmPlex.variable} ${ibmMono.variable} ${notoDevanagari.variable} font-sans`}
+        className={`${baloo.variable} ${mukta.variable} ${ibmMono.variable} font-sans`}
       >
         <PatientProvider>
           <LocaleHtmlLang />

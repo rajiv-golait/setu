@@ -8,8 +8,12 @@ import { CancelDialog } from "@/components/appointments/cancel-dialog";
 import { RescheduleFlow } from "@/components/appointments/reschedule-flow";
 import { VideoConsult } from "@/components/doctor/video-consult";
 import { PatientContextPanel } from "@/components/PatientContextPanel";
-import { getAppointment, listEncountersForPatient, patchAppointment } from "@/lib/api";
-import { API_BASE } from "@/lib/constants";
+import {
+  getAppointment,
+  getAppointmentPatientContext,
+  listEncountersForPatient,
+  patchAppointment,
+} from "@/lib/api";
 import { SecondaryButton } from "@/components/ui/buttons";
 import type { Appointment } from "@/lib/types";
 
@@ -22,9 +26,7 @@ export default function DoctorAppointmentDetailPage() {
 
   const refresh = () => {
     const apptP = getAppointment(id);
-    const ctxP = fetch(`${API_BASE}/appointments/${id}/patient-context`)
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null);
+    const ctxP = getAppointmentPatientContext(id).catch(() => null);
 
     Promise.all([apptP, ctxP]).then(([found, ctx]) => {
       setAppt(found ?? null);

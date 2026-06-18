@@ -102,6 +102,7 @@ export interface PatientRecord {
   id: string;
   display_name?: string | null;
   lang_pref: string;
+  onboarding_completed?: boolean;
   created_at: string;
   patient_token?: string | null;
 }
@@ -137,7 +138,10 @@ export interface CurrentTruth {
 export interface PatientSummary {
   summary_id: string;
   patient_id: string;
-  lang: string;
+  language?: string;
+  lang?: string;
+  /** Reasoner that produced this summary; non-"mock" → real AI ("AI verified"). */
+  model?: string;
   greeting: string;
   what_we_found: string[];
   your_medicines: Array<{ name: string; how_to_take: string; plain: string }>;

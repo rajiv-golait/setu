@@ -26,13 +26,21 @@ export default function OnboardingPage() {
     }
   }, [ready, patient, ensurePatient]);
 
+  useEffect(() => {
+    if (patient?.onboardingCompleted) {
+      router.replace("/");
+    } else if (patient?.langPref) {
+      const pref = patient.langPref as (typeof LANGS)[number]["id"];
+      if (LANGS.some((l) => l.id === pref)) setLang(pref);
+    }
+  }, [patient, router]);
+
   const save = async () => {
     setLoading(true);
     try {
       await ensurePatient();
-      await updatePatientMe({ lang_pref: lang });
+      await updatePatientMe({ lang_pref: lang, onboarding_completed: true });
       await refreshPatient();
-      localStorage.setItem("setu_onboarded", "1");
       router.replace("/");
     } finally {
       setLoading(false);

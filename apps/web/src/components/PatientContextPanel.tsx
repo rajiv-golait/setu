@@ -1,9 +1,10 @@
+import { HeartHandshake, Pill, ShieldAlert } from "lucide-react";
 import type { CurrentTruth } from "@/lib/types";
 
 interface BriefData {
   one_line?: string;
   chief_concern?: string;
-  active_medications?: Array<{ name?: string; dose?: string; frequency?: string }>;
+  active_medications?: Array<{ name?: string; dose?: string; frequency?: string; instructions?: string }>;
   recent_labs?: Array<{ test?: string; value?: unknown; unit?: string; flag?: string }>;
   active_conditions?: Array<{ condition?: string }>;
   allergies?: Array<{ substance?: string; severity?: string }>;
@@ -13,13 +14,14 @@ interface BriefData {
 interface PatientContextPanelProps {
   brief?: BriefData | null;
   currentTruth?: CurrentTruth | null;
+  patientName?: string | null;
 }
 
-export function PatientContextPanel({ brief, currentTruth }: PatientContextPanelProps) {
+export function PatientContextPanel({ brief, currentTruth, patientName }: PatientContextPanelProps) {
   if (!brief && !currentTruth) {
     return (
       <div className="rounded-card border border-border bg-surface-raised p-4 text-sm text-text-muted">
-        No patient health data on file yet.
+        No health record on file yet — this patient hasn&apos;t shared documents.
       </div>
     );
   }
@@ -32,28 +34,33 @@ export function PatientContextPanel({ brief, currentTruth }: PatientContextPanel
 
   return (
     <div className="space-y-4">
-      {brief?.one_line && (
-        <div className="rounded-card border border-info-border bg-info-bg p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-info-title">Overview</p>
-          <p className="mt-1 text-sm font-semibold text-[#3A5680]">{brief.one_line}</p>
-          {brief.chief_concern && (
-            <p className="mt-0.5 text-xs text-[#4A6A90]">Concern: {brief.chief_concern}</p>
-          )}
+      {/* Person-first header */}
+      <div className="rounded-hero border border-primary/15 bg-[#EAF5F2] p-4">
+        <div className="flex items-center gap-2">
+          <HeartHandshake className="h-4 w-4 text-primary" aria-hidden />
+          <p className="font-display text-[15px] font-semibold text-primary">
+            {patientName?.trim() || "Your patient"}
+          </p>
         </div>
-      )}
+        {brief?.one_line && <p className="mt-2 text-sm font-semibold text-text">{brief.one_line}</p>}
+        {brief?.chief_concern && (
+          <p className="mt-0.5 text-sm text-text-muted">Here for: {brief.chief_concern}</p>
+        )}
+      </div>
 
       {meds.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-light">
-            Active Medications
-          </p>
+          <SectionLabel>Current medicines</SectionLabel>
           <div className="space-y-1.5">
             {meds.map((m, i) => (
-              <div key={i} className="rounded-[10px] border border-border bg-surface-raised px-3 py-2">
-                <p className="text-sm font-semibold">{m.name ?? "Unknown"}</p>
-                <p className="text-xs text-text-muted">
-                  {[m.dose, m.frequency].filter(Boolean).join(" · ")}
-                </p>
+              <div key={i} className="flex items-start gap-2.5 rounded-card border border-border bg-surface-raised px-3 py-2.5">
+                <Pill className="mt-0.5 h-4 w-4 shrink-0 text-primary-light" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">{m.name ?? "Unknown"}</p>
+                  <p className="text-xs text-text-muted">
+                    {[m.dose, m.frequency, m.instructions].filter(Boolean).join(" · ") || "As prescribed"}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -62,23 +69,19 @@ export function PatientContextPanel({ brief, currentTruth }: PatientContextPanel
 
       {labs.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-light">
-            Recent Labs
-          </p>
+          <SectionLabel>Recent labs</SectionLabel>
           <div className="space-y-1.5">
             {labs.map((l, i) => {
-              const flagColor =
-                l.flag === "high"
-                  ? "text-danger"
-                  : l.flag === "low"
-                    ? "text-warning"
-                    : "text-text-muted";
+              const high = l.flag === "high";
+              const low = l.flag === "low";
+              const flagColor = high ? "text-danger" : low ? "text-warning" : "text-text-muted";
               return (
-                <div key={i} className="flex items-center justify-between rounded-[10px] border border-border bg-surface-raised px-3 py-2">
+                <div key={i} className="flex items-center justify-between rounded-card border border-border bg-surface-raised px-3 py-2.5">
                   <p className="text-sm">{l.test ?? "Unknown"}</p>
                   <p className={`text-sm font-semibold ${flagColor}`}>
-                    {l.value}{l.unit ? ` ${l.unit}` : ""}
-                    {l.flag ? ` (${l.flag})` : ""}
+                    {String(l.value ?? "")}
+                    {l.unit ? ` ${l.unit}` : ""}
+                    {l.flag ? ` · ${l.flag}` : ""}
                   </p>
                 </div>
               );
@@ -89,9 +92,7 @@ export function PatientContextPanel({ brief, currentTruth }: PatientContextPanel
 
       {conditions.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-light">
-            Conditions
-          </p>
+          <SectionLabel>Conditions</SectionLabel>
           <div className="flex flex-wrap gap-2">
             {conditions.map((c, i) => (
               <span key={i} className="rounded-full border border-border bg-surface-raised px-3 py-1 text-xs font-semibold">
@@ -104,11 +105,15 @@ export function PatientContextPanel({ brief, currentTruth }: PatientContextPanel
 
       {allergies.length > 0 && (
         <div className="rounded-card border border-danger-border bg-danger-bg p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-danger">Allergies</p>
-          <ul className="mt-1 space-y-0.5">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-danger" aria-hidden />
+            <p className="text-xs font-semibold uppercase tracking-wide text-danger">Allergies</p>
+          </div>
+          <ul className="mt-1.5 space-y-0.5">
             {allergies.map((a, i) => (
               <li key={i} className="text-sm text-danger">
-                {a.substance}{a.severity ? ` (${a.severity})` : ""}
+                {a.substance}
+                {a.severity ? ` (${a.severity})` : ""}
               </li>
             ))}
           </ul>
@@ -117,19 +122,27 @@ export function PatientContextPanel({ brief, currentTruth }: PatientContextPanel
 
       {questions.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-primary-light">
-            Suggested Questions
-          </p>
+          <SectionLabel>Worth asking</SectionLabel>
           <ul className="space-y-1">
             {questions.map((q, i) => (
               <li key={i} className="flex gap-2 text-sm text-text-muted">
-                <span>·</span>
+                <span className="text-primary-light">·</span>
                 {q}
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      <p className="text-[11px] italic text-text-faint">For your reference — not a diagnosis.</p>
     </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-2 font-display text-xs font-semibold uppercase tracking-wide text-primary-light">
+      {children}
+    </p>
   );
 }

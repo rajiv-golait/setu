@@ -106,7 +106,7 @@ export default function AdminDoctorsPage() {
             <input
               type="tel"
               inputMode="tel"
-              placeholder="9876543210"
+              placeholder="10-digit mobile number"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               className="mt-1 w-full rounded-card border border-border bg-surface px-3 py-2 text-base"

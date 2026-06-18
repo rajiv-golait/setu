@@ -9,7 +9,7 @@ import { ErrorPanel } from "@/components/ui/state-panel";
 import { STAGE_LABELS } from "@/lib/constants";
 import { useJobPolling } from "@/lib/hooks/use-job-polling";
 import { formatFileSize, loadUploadMeta, mimeLabel } from "@/lib/upload-meta";
-import { API_BASE } from "@/lib/constants";
+import { retryJob } from "@/lib/api";
 
 const DEFAULT_STAGES = [
   "extraction",
@@ -48,7 +48,7 @@ export default function ProgressPage() {
     if (!jobId || retrying) return;
     setRetrying(true);
     try {
-      await fetch(`${API_BASE}/jobs/${jobId}/retry`, { method: "POST" });
+      await retryJob(jobId);
       refresh();
     } finally {
       setRetrying(false);

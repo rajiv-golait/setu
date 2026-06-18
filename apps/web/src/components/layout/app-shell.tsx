@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomNav } from "./bottom-nav";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { usePatient } from "@/lib/hooks/use-patient";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
 
 export function AppShell({
@@ -15,14 +16,15 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { patient, ready } = usePatient();
 
   useEffect(() => {
-    if (!SUPABASE_ENABLED) return;
+    if (!SUPABASE_ENABLED || !ready) return;
     if (pathname === "/onboarding" || pathname === "/login") return;
-    if (typeof window !== "undefined" && !localStorage.getItem("setu_onboarded")) {
+    if (patient && !patient.onboardingCompleted) {
       router.replace("/onboarding");
     }
-  }, [pathname, router]);
+  }, [pathname, patient, ready, router]);
 
   return (
     <div className="mx-auto min-h-screen max-w-lg bg-surface">

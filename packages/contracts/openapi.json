@@ -2189,6 +2189,11 @@
             "title": "Lang Pref",
             "type": "string"
           },
+          "onboarding_completed": {
+            "default": false,
+            "title": "Onboarding Completed",
+            "type": "boolean"
+          },
           "patient_token": {
             "anyOf": [
               {
@@ -2530,6 +2535,17 @@
               }
             ],
             "title": "Lang Pref"
+          },
+          "onboarding_completed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Onboarding Completed"
           }
         },
         "title": "PatientUpdateRequest",
@@ -3706,6 +3722,19 @@
           "created_at"
         ],
         "title": "TriageResultDTO",
+        "type": "object"
+      },
+      "UnsubscribeRequest": {
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint"
+        ],
+        "title": "UnsubscribeRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -7920,7 +7949,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SubscribeRequest"
+                "$ref": "#/components/schemas/UnsubscribeRequest"
               }
             }
           },

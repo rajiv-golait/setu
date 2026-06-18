@@ -12,6 +12,7 @@ export interface StoredPatient {
   token?: string;
   displayName?: string;
   langPref: string;
+  onboardingCompleted: boolean;
 }
 
 interface PatientContextValue {
@@ -29,10 +30,36 @@ function readStored(): StoredPatient | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as StoredPatient) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredPatient> & { id: string };
+    return {
+      id: parsed.id,
+      token: parsed.token,
+      displayName: parsed.displayName,
+      langPref: parsed.langPref ?? "mr",
+      onboardingCompleted: parsed.onboardingCompleted ?? false,
+    };
   } catch {
     return null;
   }
+}
+
+function patientFromRecord(
+  record: {
+    id: string;
+    display_name?: string | null;
+    lang_pref?: string;
+    onboarding_completed?: boolean;
+  },
+  extra?: Partial<StoredPatient>,
+): StoredPatient {
+  return {
+    id: record.id,
+    displayName: record.display_name ?? undefined,
+    langPref: record.lang_pref ?? "mr",
+    onboardingCompleted: record.onboarding_completed ?? false,
+    ...extra,
+  };
 }
 
 function writeStored(p: StoredPatient) {
@@ -68,11 +95,7 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
         }
         getPatientMe()
           .then((record) => {
-            const next: StoredPatient = {
-              id: record.id,
-              displayName: record.display_name ?? undefined,
-              langPref: record.lang_pref ?? "mr",
-            };
+            const next = patientFromRecord(record);
             writeStored(next);
             setPatientState(next);
           })
@@ -85,18 +108,13 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
       } = supabase.auth.onAuthStateChange((_event, session) => {
         if (!session) {
           localStorage.removeItem(STORAGE_KEY);
-          localStorage.removeItem("setu_onboarded");
           setPatientState(null);
           return;
         }
         localStorage.removeItem(STORAGE_KEY);
         getPatientMe()
           .then((record) => {
-            const next: StoredPatient = {
-              id: record.id,
-              displayName: record.display_name ?? undefined,
-              langPref: record.lang_pref ?? "mr",
-            };
+            const next = patientFromRecord(record);
             writeStored(next);
             setPatientState(next);
           })
@@ -115,12 +133,7 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
 
     getPatient(stored.id)
       .then((record) => {
-        const next: StoredPatient = {
-          id: record.id,
-          token: stored.token,
-          displayName: record.display_name ?? undefined,
-          langPref: record.lang_pref ?? "mr",
-        };
+        const next = patientFromRecord(record, { token: stored.token });
         writeStored(next);
         setPatientState(next);
       })
@@ -142,23 +155,14 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
 
     if (SUPABASE_ENABLED) {
       const record = await getPatientMe();
-      const next: StoredPatient = {
-        id: record.id,
-        displayName: record.display_name ?? undefined,
-        langPref: record.lang_pref ?? "mr",
-      };
+      const next = patientFromRecord(record);
       writeStored(next);
       setPatientState(next);
       return next;
     }
 
     const created = await createPatient(undefined, "mr");
-    const next: StoredPatient = {
-      id: created.id,
-      token: created.patient_token ?? undefined,
-      displayName: created.display_name ?? undefined,
-      langPref: created.lang_pref ?? "mr",
-    };
+    const next = patientFromRecord(created, { token: created.patient_token ?? undefined });
     writeStored(next);
     setPatientState(next);
     return next;
@@ -167,23 +171,14 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
   const refreshPatient = useCallback(async () => {
     if (SUPABASE_ENABLED) {
       const record = await getPatientMe();
-      const next: StoredPatient = {
-        id: record.id,
-        displayName: record.display_name ?? undefined,
-        langPref: record.lang_pref ?? "mr",
-      };
+      const next = patientFromRecord(record);
       writeStored(next);
       setPatientState(next);
       return;
     }
     if (!patient?.id) return;
     const record = await getPatient(patient.id);
-    const next: StoredPatient = {
-      id: record.id,
-      token: patient.token,
-      displayName: record.display_name ?? undefined,
-      langPref: record.lang_pref ?? "mr",
-    };
+    const next = patientFromRecord(record, { token: patient.token });
     writeStored(next);
     setPatientState(next);
   }, [patient]);

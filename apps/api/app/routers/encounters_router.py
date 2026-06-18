@@ -236,6 +236,30 @@ async def add_prescription(
         await _p.persist_claims(db, enc.patient_id, rx_doc_id, claims)
         await recompute_current_truth(db, enc.patient_id)
 
+        # Living-memory signal: tell the patient app a new medicine just arrived so
+        # Today + Saathi can light up within seconds (the demo centerpiece).
+        med_names = [str(c.fields.get("name", "")).strip() for c in claims if c.fields.get("name")]
+        first_med = med_names[0] if med_names else "a new medicine"
+        doctor_name = getattr(provider, "display_name", None) or "Your doctor"
+        body_text = (
+            f"{doctor_name} added {first_med}."
+            if len(med_names) <= 1
+            else f"{doctor_name} added {len(med_names)} new medicines, including {first_med}."
+        )
+        await notify_svc.notify_patient_in_app(
+            db,
+            patient_id=enc.patient_id,
+            title="New medicine added",
+            body=body_text,
+            data={
+                "type": "new_prescription",
+                "med": first_med,
+                "meds": med_names,
+                "doctor": doctor_name,
+                "encounter_id": enc.id,
+            },
+        )
+
     await db.commit()
     return {"id": rx.id}
 

@@ -11,11 +11,23 @@ import logging
 logger = logging.getLogger("setu.push")
 
 
-async def send_push(endpoint: str, p256dh: str, auth: str, *, title: str, body: str) -> bool:
+async def send_push(
+    endpoint: str,
+    p256dh: str,
+    auth: str,
+    *,
+    title: str,
+    body: str,
+    url: str = "/",
+) -> bool:
     from app.config import settings
 
     if not settings.VAPID_PRIVATE_KEY or not settings.VAPID_PUBLIC_KEY:
         return False
+
+    import json
+
+    payload = json.dumps({"title": title, "body": body, "url": url})
 
     def _send() -> bool:
         try:
@@ -26,7 +38,7 @@ async def send_push(endpoint: str, p256dh: str, auth: str, *, title: str, body: 
                     "endpoint": endpoint,
                     "keys": {"p256dh": p256dh, "auth": auth},
                 },
-                data=f'{{"title":"{title}","body":"{body}"}}',
+                data=payload,
                 vapid_private_key=settings.VAPID_PRIVATE_KEY,
                 vapid_claims={"sub": f"mailto:{settings.VAPID_CONTACT_EMAIL}"},
             )

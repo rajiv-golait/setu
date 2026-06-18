@@ -9,22 +9,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        surface: "#FAFAF7",
-        "surface-raised": "#FFFFFF",
+        // Warm cream canvas — never clinical white.
+        surface: "#FFF8F0",
+        "surface-raised": "#FFFCF6",
+        // SETU = teal, the calm keeper.
         primary: {
-          DEFAULT: "#1B4332",
-          pressed: "#143528",
-          light: "#40916C",
+          DEFAULT: "#0F766E",
+          pressed: "#0B5E57",
+          light: "#14B8A6",
+        },
+        // Saathi = coral, the warm friend (Saathi surfaces only).
+        saathi: {
+          DEFAULT: "#F4795B",
+          deep: "#EC6A50",
+          soft: "#FBBF9D",
+          bg: "#FEEDE6",
+          border: "#F8D3C5",
+        },
+        // Marigold = highlight / celebration / new-med pulse.
+        marigold: {
+          DEFAULT: "#F4A93C",
+          bg: "#FDF1DD",
+          border: "#F3DCB0",
         },
         text: {
-          DEFAULT: "#1A1A18",
+          DEFAULT: "#1C2A2A",
           muted: "#6B7280",
           faint: "#9AA0A6",
         },
+        // "Discuss with your doctor" — calm amber, caring not alarm.
         warning: {
-          DEFAULT: "#B45309",
-          bg: "#FBF3E7",
-          border: "#ECD8B6",
+          DEFAULT: "#F59E0B",
+          bg: "#FDF1DD",
+          border: "#F3DCB0",
         },
         info: {
           DEFAULT: "#2A5BA8",
@@ -32,25 +49,27 @@ const config: Config = {
           border: "#CBD9F2",
           title: "#1F3F73",
         },
+        // Urgent only — genuine red-flag escalation.
         danger: {
-          DEFAULT: "#991B1B",
-          bg: "#FBEAEA",
-          border: "#EFD2D2",
+          DEFAULT: "#DC2626",
+          bg: "#FCEBEB",
+          border: "#F4CFCF",
         },
         success: {
-          DEFAULT: "#166534",
-          bg: "#E7F0E9",
-          border: "#CFE3D6",
+          DEFAULT: "#16A34A",
+          bg: "#E7F5EC",
+          border: "#C8E9D4",
         },
         border: {
-          DEFAULT: "#ECECE6",
-          warm: "#E5E7EB",
+          DEFAULT: "#F0E5D6",
+          warm: "#E5D9C8",
         },
       },
       fontFamily: {
-        sans: ["var(--font-ibm-plex)", "system-ui", "sans-serif"],
+        sans: ["var(--font-mukta)", "system-ui", "sans-serif"],
+        display: ["var(--font-baloo)", "var(--font-mukta)", "sans-serif"],
         mono: ["var(--font-ibm-mono)", "monospace"],
-        devanagari: ["var(--font-noto-devanagari)", "var(--font-ibm-plex)", "sans-serif"],
+        devanagari: ["var(--font-mukta)", "var(--font-baloo)", "sans-serif"],
       },
       borderRadius: {
         card: "13px",

@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { getSummary } from "@/lib/api";
-import { API_BASE } from "@/lib/constants";
+import { getDocumentExplanation, getSummary } from "@/lib/api";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { PatientSummary } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
 export default function SummaryPage() {
+  return (
+    <Suspense fallback={<div className="px-5 py-10 text-center text-sm text-text-faint">Loading…</div>}>
+      <SummaryContent />
+    </Suspense>
+  );
+}
+
+function SummaryContent() {
   const { patient, ready } = usePatient();
   const searchParams = useSearchParams();
   const docId = searchParams.get("docId");
@@ -29,7 +36,11 @@ export default function SummaryPage() {
   useEffect(() => {
     if (!ready || !patient?.id) return;
     getSummary(patient.id, lang)
-      .then(setSummary)
+      .then((s) => {
+        setSummary(s);
+        // Real reasoner (not the mock) → quiet "AI verified" reassurance.
+        if (s.model && s.model !== "mock") setIsLiveAI(true);
+      })
       .catch(async () => {
         // Fall back to the raw explanation from the last processed document.
         if (!docId) {
@@ -37,9 +48,7 @@ export default function SummaryPage() {
           return;
         }
         try {
-          const res = await fetch(`${API_BASE}/webchat/explanation/${docId}`);
-          if (!res.ok) throw new Error("no explanation");
-          const data = await res.json();
+          const data = await getDocumentExplanation(docId);
           setFallbackText(data.explanation ?? null);
           if (data.source === "live_ai") setIsLiveAI(true);
         } catch {
@@ -57,7 +66,7 @@ export default function SummaryPage() {
     >
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-[23px] font-semibold tracking-tight">Your summary</h1>
+          <h1 className="font-display text-[23px] font-semibold tracking-tight">In simple words</h1>
           {isLiveAI && (
             <span className="rounded-full bg-success-bg px-2 py-0.5 text-xs font-semibold text-success">
               AI verified

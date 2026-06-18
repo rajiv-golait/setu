@@ -41,6 +41,7 @@ class Patient(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     lang_pref: Mapped[str] = mapped_column(String, default="mr")
+    onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     telegram_chat_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     patient_token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     supabase_user_id: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)

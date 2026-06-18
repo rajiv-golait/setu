@@ -24,6 +24,7 @@ def _patient_dto(patient: Patient, *, include_token: bool = False) -> PatientDTO
         id=patient.id,
         display_name=patient.display_name,
         lang_pref=patient.lang_pref,
+        onboarding_completed=patient.onboarding_completed,
         created_at=patient.created_at,
         patient_token=patient.patient_token if include_token else None,
     )
@@ -67,6 +68,8 @@ async def update_me(
         patient.display_name = body.display_name
     if body.lang_pref is not None:
         patient.lang_pref = body.lang_pref
+    if body.onboarding_completed is not None:
+        patient.onboarding_completed = body.onboarding_completed
     await db.commit()
     await db.refresh(patient)
     return _patient_dto(patient)
