@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Share2, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronRight, LogOut, Share2, Shield } from "lucide-react";
 import { LanguagePicker } from "@/components/profile/language-picker";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { ErrorPanel } from "@/components/ui/state-panel";
@@ -10,6 +11,7 @@ import { ScreenHeader } from "@/components/ui/screen-header";
 import { WarmCard } from "@/components/ui/warm-card";
 import { getPatientProfile, updatePatientMe, updatePatientProfile } from "@/lib/api";
 import { isPatientLang, type PatientLang } from "@/lib/constants/langs";
+import { createClient } from "@/lib/supabase/client";
 import { useLocale } from "@/lib/hooks/use-locale";
 import { usePatient } from "@/lib/hooks/use-patient";
 import type { PatientProfile } from "@/lib/types";
@@ -23,7 +25,22 @@ function splitList(value: string): string[] {
 
 export default function PatientProfilePage() {
   const { t } = useLocale();
-  const { patient, ready, refreshPatient } = usePatient();
+  const router = useRouter();
+  const { patient, ready, refreshPatient, clearPatient } = usePatient();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const signOut = async () => {
+    setSigningOut(true);
+    try {
+      const supabase = createClient();
+      if (supabase) await supabase.auth.signOut();
+    } catch {
+      /* sign out is best-effort; always clear local state below */
+    } finally {
+      clearPatient();
+      router.replace("/welcome");
+    }
+  };
 
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -255,6 +272,16 @@ export default function PatientProfilePage() {
           <ChevronRight className="h-4 w-4 text-text-faint" aria-hidden />
         </Link>
       </section>
+
+      <button
+        type="button"
+        onClick={() => void signOut()}
+        disabled={signingOut}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-card border border-border bg-surface-raised px-4 py-3.5 text-sm font-semibold text-danger shadow-card disabled:opacity-60"
+      >
+        <LogOut className="h-4 w-4" aria-hidden />
+        {signingOut ? t("profile.signingOut") : t("profile.signOut")}
+      </button>
 
       {profile && (
         <p className="mt-6 text-center text-xs text-text-faint">ID · {profile.patient_id}</p>

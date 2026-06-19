@@ -102,7 +102,7 @@ export async function subscribeToReminders(): Promise<PushSubscribeResult> {
       return {
         ok: false,
         reason: "no_vapid",
-        message: "Reminders are not configured on the server yet. Ask your admin to set VAPID keys.",
+        message: "Reminders aren't available just yet — we'll turn them on soon.",
       };
     }
     publicKey = public_key;
@@ -111,8 +111,7 @@ export async function subscribeToReminders(): Promise<PushSubscribeResult> {
       return {
         ok: false,
         reason: "no_vapid",
-        message:
-          "Reminders are not configured on the server yet. Run: cd apps/api && python scripts/generate_vapid.py",
+        message: "Reminders aren't available just yet — we'll turn them on soon.",
       };
     }
     return {

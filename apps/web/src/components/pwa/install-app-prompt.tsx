@@ -12,6 +12,10 @@ const HIDE_PREFIXES = [
   "/doctor/login",
   "/share/",
   "/brief/",
+  // Marketing pages have their own language toggle; the app-locale install card
+  // (defaults to Marathi) clashed with the English landing. Show it inside the app.
+  "/welcome",
+  "/for-doctors",
 ];
 
 export function InstallAppPrompt({ pathname }: { pathname: string }) {

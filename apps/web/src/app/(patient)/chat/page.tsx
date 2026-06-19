@@ -71,6 +71,7 @@ export default function ChatPage() {
     const userMsg: SaathiMessage = { role: "user", content: text };
     const next = [...messages, userMsg];
     setMessages(next);
+    saveSaathiHistory(next); // persist immediately so nothing is lost on navigation/reload
     setInput("");
     setLoading(true);
 
@@ -96,7 +97,9 @@ export default function ChatPage() {
               : "I couldn't reach my notes just now — please try again in a moment.",
         action: "none",
       };
-      setMessages([...next, errMsg]);
+      const withErr = [...next, errMsg];
+      setMessages(withErr);
+      saveSaathiHistory(withErr);
     } finally {
       setLoading(false);
     }
