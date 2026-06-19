@@ -5,12 +5,18 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/buttons";
 import { AuthBrand } from "@/components/auth/auth-brand";
-import { ensureDevAdmin } from "@/lib/api";
+import { ensureDevAdmin, ApiError } from "@/lib/api";
 import { createClient } from "@/lib/supabase/client";
 import { SUPABASE_ENABLED } from "@/lib/supabase/config";
 import { roleFromMetadata } from "@/lib/auth/role";
 
 const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL ?? "itsmerajiv021@gmail.com";
+
+function isLocalDevHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1";
+}
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -41,17 +47,25 @@ export default function AdminLoginPage() {
     setLoading(true);
     const trimmedEmail = email.trim();
     try {
-      const bootstrap = await ensureDevAdmin().catch(() => ({
-        ok: false as const,
-        message: "Could not reach the API. Is apps/api running?",
-      }));
+      // Dev-only: API creates/resets admin via service role. Blocked when PRODUCTION=true on Railway.
+      if (isLocalDevHost()) {
+        const bootstrap = await ensureDevAdmin().catch((e) => {
+          if (e instanceof ApiError) {
+            return { ok: false as const, message: e.message };
+          }
+          return {
+            ok: false as const,
+            message:
+              "Could not reach the API. Start it with: cd apps/api && uvicorn app.main:app --reload --port 8000",
+          };
+        });
 
-      if (!bootstrap.ok) {
-        throw new Error(
-          bootstrap.message ??
-            "Add SUPABASE_SERVICE_ROLE_KEY to apps/api/.env, restart the API, then try again. " +
-              "Find it in Supabase → Project Settings → API → service_role (secret).",
-        );
+        if (!bootstrap.ok) {
+          throw new Error(
+            bootstrap.message ??
+              "Add SUPABASE_SERVICE_ROLE_KEY to apps/api/.env, restart the API, then try again.",
+          );
+        }
       }
 
       const { error: err } = await supabase.auth.signInWithPassword({
@@ -128,9 +142,13 @@ export default function AdminLoginPage() {
         Default: <span className="font-semibold">{DEV_EMAIL}</span> /{" "}
         <span className="font-semibold">setu-admin-dev</span>
         <br />
-        Requires <span className="font-semibold">SUPABASE_SERVICE_ROLE_KEY</span> in{" "}
-        <span className="font-mono text-xs">apps/api/.env</span> — the API creates the account
-        without sending email.
+        <span className="mt-2 inline-block">
+          Local: run <span className="font-mono text-xs">python scripts/create_dev_admin.py</span> in{" "}
+          <span className="font-mono text-xs">apps/api</span> (needs{" "}
+          <span className="font-semibold">SUPABASE_SERVICE_ROLE_KEY</span>).
+          <br />
+          Production: create the admin once in Supabase, then sign in here — no API bootstrap.
+        </span>
       </p>
 
       <p className="mt-4 text-center text-sm">

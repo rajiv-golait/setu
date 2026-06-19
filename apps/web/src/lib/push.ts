@@ -107,7 +107,7 @@ export async function subscribeToReminders(): Promise<PushSubscribeResult> {
     }
     publicKey = public_key;
   } catch (e) {
-    if (e instanceof ApiError && e.status === 503) {
+        if (e instanceof ApiError && (e.status === 503 || e.status === 0)) {
       return {
         ok: false,
         reason: "no_vapid",

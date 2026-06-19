@@ -61,3 +61,20 @@ Every push to `main` will deploy production; other branches get preview URLs.
 1. Open https://web-iota-eight-59.vercel.app — home should load (not stuck on “Loading…” once API + CORS are set).
 2. Upload a document → progress → brief.
 3. Open `/brief/shr_demo_token` or a real share token on a second device.
+
+## Admin login (production)
+
+`/admin/login` uses **Supabase email/password**. The dev bootstrap API (`POST /auth/dev/ensure-admin`) is disabled when Railway has `PRODUCTION=true`.
+
+1. **Create the admin once** (local machine, prod Supabase keys in `apps/api/.env`):
+
+   ```bash
+   cd apps/api
+   python scripts/create_dev_admin.py
+   ```
+
+   Or Supabase Dashboard → Authentication → Users: create the admin user with `app_metadata.role` = `admin`.
+
+2. Vercel env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_ENABLED=true`.
+
+3. Sign in at `/admin/login`.

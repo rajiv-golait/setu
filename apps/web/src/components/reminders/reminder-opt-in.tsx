@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { BellRing, Check } from "lucide-react";
 import { SaathiAvatar } from "@/components/characters/saathi-avatar";
-import { updateNotificationPreference } from "@/lib/api";
+import { updateNotificationPreference, getVapidKey, ApiError } from "@/lib/api";
 import {
   isSubscribed,
   pushFailureMessage,
@@ -31,7 +31,14 @@ export function ReminderOptIn() {
         return;
       }
       const dismissed = sessionStorage.getItem(DISMISS_KEY) === "1";
-      if (!cancelled && !dismissed) setState("ask");
+      if (dismissed) return;
+      try {
+        await getVapidKey();
+      } catch (e) {
+        // Server has no VAPID keys — don't show a prompt that can only fail.
+        if (e instanceof ApiError && (e.status === 503 || e.status === 0)) return;
+      }
+      if (!cancelled) setState("ask");
     })();
     return () => {
       cancelled = true;

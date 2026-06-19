@@ -42,6 +42,9 @@ npx @railway/cli@latest redeploy --service setu-api -y
 | `CORS_ORIGINS` | Include `https://web-iota-eight-59.vercel.app` |
 | `BRIEF_BASE_URL` | `https://web-iota-eight-59.vercel.app` |
 | `SHARE_BASE_URL` | `https://web-iota-eight-59.vercel.app/share` |
+| `VAPID_PUBLIC_KEY` | From `python scripts/generate_vapid.py` |
+| `VAPID_PRIVATE_KEY` | Same script (keep secret) |
+| `VAPID_CONTACT_EMAIL` | `noreply@setu.health` |
 
 ## Wire the Vercel frontend
 
